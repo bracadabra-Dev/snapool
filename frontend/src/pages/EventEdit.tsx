@@ -251,7 +251,12 @@ export default function EventEdit() {
         </div>
       </div>
 
-      <Lightbox photo={selected} onClose={() => setSelected(null)} />
+      <Lightbox
+        photos={photos}
+        photo={selected}
+        onClose={() => setSelected(null)}
+        onSelect={setSelected}
+      />
     </div>
   );
 }

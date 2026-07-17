@@ -174,7 +174,12 @@ export default function ContributorPage() {
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Live gallery</h2>
       <GalleryGrid photos={photos} onSelect={setSelected} />
-      <Lightbox photo={selected} onClose={() => setSelected(null)} />
+      <Lightbox
+        photos={photos}
+        photo={selected}
+        onClose={() => setSelected(null)}
+        onSelect={setSelected}
+      />
     </div>
   );
 }

@@ -10,3 +10,5 @@ coverage/
 *.tsbuildinfo
 uploads/
 .turbo/
+
+backend/.env
