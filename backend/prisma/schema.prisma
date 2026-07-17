@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  role          String // "photographer" | "organizer" | "hybrid"
+  businessName  String?
+  portfolioUrl  String?
+  plan          String    @default("free") // "free" | "pro" | "studio" | "event_pass"
+  planExpiresAt DateTime?
+  createdAt     DateTime  @default(now())
+  events        Event[]
+}
+
+model Event {
+  id                      String        @id @default(uuid())
+  ownerId                 String
+  owner                   User          @relation(fields: [ownerId], references: [id])
+  name                    String
+  slug                    String        @unique
+  coverImageUrl           String?
+  qrCodeUrl               String?
+  visibility              String        @default("unlisted") // "public" | "unlisted" | "password"
+  passwordHash            String?
+  contributionOpensAt     DateTime?
+  contributionClosesAt    DateTime?
+  galleryLive             Boolean       @default(true)
+  moderationMode          String        @default("auto") // "auto" | "manual"
+  maxPhotosPerContributor Int           @default(20)
+  requireContributorName  Boolean       @default(false)
+  brandingLogoUrl         String?
+  thankYouMessage         String?
+  retentionDays           Int           @default(7)
+  createdAt               DateTime      @default(now())
+  photos                  Photo[]
+  contributors            Contributor[]
+}
+
+model Contributor {
+  id           String   @id @default(uuid())
+  eventId      String
+  event        Event    @relation(fields: [eventId], references: [id])
+  name         String?
+  phone        String?
+  sessionToken String   @unique
+  createdAt    DateTime @default(now())
+  photos       Photo[]
+}
+
+model Photo {
+  id            String       @id @default(uuid())
+  eventId       String
+  event         Event        @relation(fields: [eventId], references: [id])
+  contributorId String?
+  contributor   Contributor? @relation(fields: [contributorId], references: [id])
+  type          String // "pro" | "contributor"
+  fullUrl       String
+  thumbUrl      String
+  status        String       @default("published") // "pending" | "published" | "rejected"
+  uploadedAt    DateTime     @default(now())
+}
