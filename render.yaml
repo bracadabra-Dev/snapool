@@ -3,7 +3,8 @@ services:
     name: spaisnap
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    # NODE_ENV=production makes npm skip devDependencies; include them so Vite/tsc can build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
