@@ -1,4 +1,5 @@
 import { Photo } from '../lib/api';
+import { ImagesIcon } from './icons';
 
 type Props = {
   photos: Photo[];
@@ -28,6 +29,9 @@ export default function GalleryGrid({
   if (!photos.length) {
     return (
       <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-16 text-center">
+        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/45">
+          <ImagesIcon size={20} />
+        </div>
         <p className="font-display text-lg font-semibold text-[var(--text)]">No shots yet</p>
         <p className="mt-1 text-sm text-[var(--muted)]">Be first — drop a photo into the live pool.</p>
       </div>

@@ -6,6 +6,7 @@ import CaptureActions from '../components/CaptureActions';
 import GalleryGrid from '../components/GalleryGrid';
 import Lightbox from '../components/Lightbox';
 import ThankChip from '../components/ThankChip';
+import { ImagesIcon, SparkIcon, UsersIcon } from '../components/icons';
 
 const SESSION_KEY = (slug: string) => `spaisnap_contrib_${slug}`;
 
@@ -224,7 +225,7 @@ export default function ContributorPage() {
           {event.name}
         </h1>
         <p className="mt-3 max-w-[28ch] text-sm leading-relaxed text-white/50">
-          Everyone’s angle, one pool — scroll the night as it fills.
+          All angles, one pool - scroll
         </p>
 
         {event.coverImageUrl && (
@@ -243,19 +244,23 @@ export default function ContributorPage() {
         <div className="flex items-end gap-5">
           {(
             [
-              ['all', 'Photos'],
-              ['pro', 'Pro'],
-              ['contributor', 'Guests'],
+              ['all', 'Photos', ImagesIcon],
+              ['pro', 'Pro', SparkIcon],
+              ['contributor', 'Guests', UsersIcon],
             ] as const
-          ).map(([id, label]) => (
+          ).map(([id, label, Icon]) => (
             <button
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`relative pb-3 pt-3 text-sm font-semibold transition ${
+              className={`relative inline-flex items-center gap-1.5 pb-3 pt-3 text-sm font-semibold transition ${
                 tab === id ? 'text-white' : 'text-white/40'
               }`}
             >
+              <Icon
+                size={15}
+                className={tab === id ? 'opacity-100' : 'opacity-70'}
+              />
               {label}
               {tab === id && (
                 <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[var(--accent)]" />

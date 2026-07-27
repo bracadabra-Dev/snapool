@@ -2,6 +2,7 @@ import { ChangeEvent, useRef, useState } from 'react';
 import FilteredCamera from './FilteredCamera';
 import PermissionSheet from './PermissionSheet';
 import UploadExplainerSheet from './UploadExplainerSheet';
+import { CameraIcon, UploadIcon } from './icons';
 
 const UPLOAD_EXPLAINED_KEY = 'spaisnap_upload_explained';
 
@@ -74,16 +75,18 @@ export default function CaptureActions({
             setPermissionMessage(null);
             setShowCamera(true);
           }}
-          className="btn-primary min-h-12 py-3.5 text-sm tracking-tight disabled:opacity-45"
+          className="btn-primary min-h-12 gap-2 py-3.5 text-sm tracking-tight disabled:opacity-45"
         >
+          <CameraIcon size={18} />
           Snap
         </button>
         <button
           type="button"
           disabled={disabled}
           onClick={handleUploadTap}
-          className="btn-ghost min-h-12 py-3.5 text-sm disabled:opacity-45"
+          className="btn-ghost min-h-12 gap-2 py-3.5 text-sm disabled:opacity-45"
         >
+          <UploadIcon size={18} />
           Upload
         </button>
       </div>
