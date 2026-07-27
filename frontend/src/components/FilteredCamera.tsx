@@ -1,4 +1,5 @@
 import { MouseEvent, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   FILTER_PRESETS,
   FILTER_SWATCH,
@@ -106,6 +107,14 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   async function handleShutter() {
     const video = videoRef.current;
     if (!video || !ready || capturing) return;
@@ -179,8 +188,8 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
 
   const activeFilter = FILTER_PRESETS.find((f) => f.id === filterId);
 
-  return (
-    <div className="fixed inset-0 z-[60] bg-black text-white">
+  return createPortal(
+    <div className="fixed inset-0 z-[110] bg-black text-white">
       {/* Full-bleed viewfinder */}
       <div className="absolute inset-0" onClick={handleViewfinderTap}>
         <video
@@ -351,7 +360,8 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
