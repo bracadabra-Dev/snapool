@@ -42,7 +42,7 @@ export default function GalleryGrid({
             key={photo.id}
             type="button"
             onClick={() => onSelect(photo)}
-            className={`group relative aspect-square overflow-hidden rounded-xl bg-[var(--surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+            className={`group relative aspect-square overflow-hidden rounded-md bg-[var(--surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
               highlightId === photo.id ? 'pool-pop' : ''
             }`}
           >
@@ -71,7 +71,7 @@ export default function GalleryGrid({
           key={photo.id}
           type="button"
           onClick={() => onSelect(photo)}
-          className={`group relative mb-1.5 w-full break-inside-avoid overflow-hidden rounded-[1.15rem] bg-[var(--surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] sm:mb-2 sm:rounded-[1.35rem] ${MASONRY_ASPECTS[i % MASONRY_ASPECTS.length]} ${
+          className={`group relative mb-1.5 w-full break-inside-avoid overflow-hidden rounded-md bg-[var(--surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] sm:mb-2 ${MASONRY_ASPECTS[i % MASONRY_ASPECTS.length]} ${
             highlightId === photo.id ? 'pool-pop' : ''
           }`}
         >
