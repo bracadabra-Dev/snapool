@@ -23,6 +23,7 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
 
   const [filterId, setFilterId] = useState<FilterId>('original');
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [lensKey, setLensKey] = useState(0);
   const [ready, setReady] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [flash, setFlash] = useState(false);
@@ -32,8 +33,10 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
   const [canFlip, setCanFlip] = useState(false);
   const [filterLabelVisible, setFilterLabelVisible] = useState(false);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
+  const [preview, setPreview] = useState<{ file: File; url: string } | null>(null);
   const focusTimer = useRef<number | null>(null);
   const labelTimer = useRef<number | null>(null);
+  const reviewing = preview !== null;
 
   useEffect(() => {
     let cancelled = false;
@@ -98,7 +101,7 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
       streamRef.current = null;
       trackRef.current = null;
     };
-  }, [facingMode]);
+  }, [facingMode, lensKey]);
 
   useEffect(() => {
     return () => {
@@ -108,6 +111,12 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
   }, []);
 
   useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview.url);
+    };
+  }, [preview]);
+
+  useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
@@ -115,9 +124,20 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
     };
   }, []);
 
+  function stopStream() {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    trackRef.current = null;
+  }
+
+  function clearPreview() {
+    if (preview) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+  }
+
   async function handleShutter() {
     const video = videoRef.current;
-    if (!video || !ready || capturing) return;
+    if (!video || !ready || capturing || reviewing) return;
     setCapturing(true);
     setFlash(true);
 
@@ -129,10 +149,12 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
         mirror: facingMode === 'user',
       });
       await new Promise((r) => window.setTimeout(r, 120));
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      trackRef.current = null;
-      onCapture(file);
+      stopStream();
+      setReady(false);
+      setTorchOn(false);
+      setFlash(false);
+      setCapturing(false);
+      setPreview({ file, url: URL.createObjectURL(file) });
     } catch (err) {
       setFlash(false);
       setCapturing(false);
@@ -140,17 +162,33 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
     }
   }
 
+  function handleRetake() {
+    clearPreview();
+    setCapturing(false);
+    setFlash(false);
+    setReady(false);
+    setTorchOn(false);
+    setLensKey((k) => k + 1);
+  }
+
+  function handleApprove() {
+    if (!preview) return;
+    const file = preview.file;
+    URL.revokeObjectURL(preview.url);
+    setPreview(null);
+    stopStream();
+    onCapture(file);
+  }
+
   function handleClose() {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    trackRef.current = null;
+    clearPreview();
+    stopStream();
     onClose();
   }
 
   function handleFlip() {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    trackRef.current = null;
+    if (reviewing) return;
+    stopStream();
     setReady(false);
     setTorchOn(false);
     setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
@@ -190,25 +228,33 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
 
   return createPortal(
     <div className="fixed inset-0 z-[110] bg-black text-white">
-      {/* Full-bleed viewfinder */}
-      <div className="absolute inset-0" onClick={handleViewfinderTap}>
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          autoPlay
-          className={`h-full w-full object-cover transition-[filter] duration-300 ${
-            facingMode === 'user' ? 'scale-x-[-1]' : ''
-          }`}
-          style={{ filter: getFilterCss(filterId) }}
-        />
+      {/* Full-bleed viewfinder / review */}
+      <div className="absolute inset-0" onClick={reviewing ? undefined : handleViewfinderTap}>
+        {reviewing ? (
+          <img
+            src={preview.url}
+            alt="Snap preview"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            autoPlay
+            className={`h-full w-full object-cover transition-[filter] duration-300 ${
+              facingMode === 'user' ? 'scale-x-[-1]' : ''
+            }`}
+            style={{ filter: getFilterCss(filterId) }}
+          />
+        )}
 
         {/* Soft vignette + control readability gradients */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.35)_100%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/70 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
 
-        {showGrid && (
+        {!reviewing && showGrid && (
           <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">
             {Array.from({ length: 9 }).map((_, i) => (
               <div key={i} className="border border-white/20" />
@@ -216,14 +262,14 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
           </div>
         )}
 
-        {focusPoint && (
+        {!reviewing && focusPoint && (
           <div
             className="pointer-events-none absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-lg border-2 border-amber-300/90 shadow-[0_0_20px_rgba(251,191,36,0.35)]"
             style={{ left: `${focusPoint.x}%`, top: `${focusPoint.y}%` }}
           />
         )}
 
-        {!ready && (
+        {!ready && !reviewing && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-white" />
             <p className="text-sm tracking-wide text-white/70">Opening lens…</p>
@@ -243,122 +289,159 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
         <button
           type="button"
           onClick={handleClose}
-          aria-label="Close camera"
+          aria-label={reviewing ? 'Discard photo' : 'Close camera'}
           className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 text-xl backdrop-blur-md"
         >
           ✕
         </button>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowGrid((v) => !v)}
-            aria-label="Toggle grid"
-            className={`flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-md ${
-              showGrid ? 'bg-white text-black' : 'bg-black/40 text-white'
-            }`}
-          >
-            <GridIcon />
-          </button>
-          {torchSupported && facingMode === 'environment' && (
+        {reviewing ? (
+          <p className="rounded-full bg-black/45 px-3 py-1.5 text-xs font-semibold tracking-wide text-white/85 backdrop-blur-md">
+            Looks good?
+          </p>
+        ) : (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => void toggleTorch()}
-              aria-label="Toggle flash"
+              onClick={() => setShowGrid((v) => !v)}
+              aria-label="Toggle grid"
               className={`flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-md ${
-                torchOn ? 'bg-amber-300 text-black' : 'bg-black/40 text-white'
+                showGrid ? 'bg-white text-black' : 'bg-black/40 text-white'
               }`}
             >
-              <BoltIcon />
+              <GridIcon />
             </button>
-          )}
-          {canFlip && (
-            <button
-              type="button"
-              onClick={handleFlip}
-              aria-label="Flip camera"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 backdrop-blur-md"
-            >
-              <FlipIcon />
-            </button>
-          )}
-        </div>
+            {torchSupported && facingMode === 'environment' && (
+              <button
+                type="button"
+                onClick={() => void toggleTorch()}
+                aria-label="Toggle flash"
+                className={`flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-md ${
+                  torchOn ? 'bg-amber-300 text-black' : 'bg-black/40 text-white'
+                }`}
+              >
+                <BoltIcon />
+              </button>
+            )}
+            {canFlip && (
+              <button
+                type="button"
+                onClick={handleFlip}
+                aria-label="Flip camera"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 backdrop-blur-md"
+              >
+                <FlipIcon />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Filter name toast */}
-      <div
-        className={`pointer-events-none absolute left-1/2 top-[22%] z-10 -translate-x-1/2 rounded-full bg-black/45 px-4 py-1.5 text-sm font-medium tracking-wide backdrop-blur-md transition-all duration-300 ${
-          filterLabelVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
-        }`}
-      >
-        {activeFilter?.label}
-      </div>
+      {!reviewing && (
+        <div
+          className={`pointer-events-none absolute left-1/2 top-[22%] z-10 -translate-x-1/2 rounded-full bg-black/45 px-4 py-1.5 text-sm font-medium tracking-wide backdrop-blur-md transition-all duration-300 ${
+            filterLabelVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+          }`}
+        >
+          {activeFilter?.label}
+        </div>
+      )}
 
       {/* Bottom chrome */}
       <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4">
-        {/* Instagram-style filter rings */}
-        <div className="mb-5 -mx-1 flex gap-3 overflow-x-auto px-2 pb-1 scrollbar-none">
-          {FILTER_PRESETS.map((preset) => {
-            const active = filterId === preset.id;
-            return (
+        {reviewing ? (
+          <div className="flex items-center justify-center gap-10 px-4">
+            <button
+              type="button"
+              onClick={handleRetake}
+              className="flex flex-col items-center gap-2"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-black/45 backdrop-blur-md">
+                <RetakeIcon />
+              </span>
+              <span className="text-xs font-semibold tracking-wide text-white/80">Retake</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleApprove}
+              className="flex flex-col items-center gap-2"
+            >
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] shadow-[0_0_28px_rgba(214,255,60,0.35)]">
+                <CheckIcon />
+              </span>
+              <span className="text-xs font-semibold tracking-wide text-white">Use photo</span>
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Instagram-style filter rings */}
+            <div className="mb-5 -mx-1 flex gap-3 overflow-x-auto px-2 pb-1 scrollbar-none">
+              {FILTER_PRESETS.map((preset) => {
+                const active = filterId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectFilter(preset.id);
+                    }}
+                    className="flex shrink-0 flex-col items-center gap-1.5"
+                  >
+                    <span
+                      className={`rounded-full p-[2px] transition-transform duration-200 ${
+                        active
+                          ? 'scale-110 bg-gradient-to-br from-white via-cyan-200 to-amber-200'
+                          : 'bg-white/25'
+                      }`}
+                    >
+                      <span
+                        className="block h-12 w-12 rounded-full border-2 border-black/40 shadow-lg"
+                        style={{ background: FILTER_SWATCH[preset.id] }}
+                      />
+                    </span>
+                    <span
+                      className={`text-[11px] font-medium ${
+                        active ? 'text-white' : 'text-white/55'
+                      }`}
+                    >
+                      {preset.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Shutter row */}
+            <div className="relative flex items-center justify-center">
               <button
-                key={preset.id}
                 type="button"
+                disabled={!ready || capturing}
+                aria-label="Take photo"
                 onClick={(e) => {
                   e.stopPropagation();
-                  selectFilter(preset.id);
+                  void handleShutter();
                 }}
-                className="flex shrink-0 flex-col items-center gap-1.5"
+                className="group relative flex h-[76px] w-[76px] items-center justify-center rounded-full disabled:opacity-40"
               >
+                <span className="absolute inset-0 rounded-full border-[3px] border-white/90" />
                 <span
-                  className={`rounded-full p-[2px] transition-transform duration-200 ${
-                    active ? 'scale-110 bg-gradient-to-br from-white via-cyan-200 to-amber-200' : 'bg-white/25'
+                  className={`h-[60px] w-[60px] rounded-full bg-white shadow-[0_0_30px_rgba(255,255,255,0.25)] transition-transform duration-150 ${
+                    capturing ? 'scale-90' : 'group-active:scale-90'
                   }`}
-                >
-                  <span
-                    className="block h-12 w-12 rounded-full border-2 border-black/40 shadow-lg"
-                    style={{ background: FILTER_SWATCH[preset.id] }}
-                  />
-                </span>
-                <span
-                  className={`text-[11px] font-medium ${
-                    active ? 'text-white' : 'text-white/55'
-                  }`}
-                >
-                  {preset.label}
-                </span>
+                />
               </button>
-            );
-          })}
-        </div>
 
-        {/* Shutter row */}
-        <div className="relative flex items-center justify-center">
-          <button
-            type="button"
-            disabled={!ready || capturing}
-            aria-label="Take photo"
-            onClick={(e) => {
-              e.stopPropagation();
-              void handleShutter();
-            }}
-            className="group relative flex h-[76px] w-[76px] items-center justify-center rounded-full disabled:opacity-40"
-          >
-            <span className="absolute inset-0 rounded-full border-[3px] border-white/90" />
-            <span
-              className={`h-[60px] w-[60px] rounded-full bg-white shadow-[0_0_30px_rgba(255,255,255,0.25)] transition-transform duration-150 ${
-                capturing ? 'scale-90' : 'group-active:scale-90'
-              }`}
-            />
-          </button>
-
-          <div className="absolute right-6 text-right">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Lens</p>
-            <p className="text-xs font-medium text-white/80">
-              {facingMode === 'environment' ? 'Rear' : 'Front'}
-            </p>
-          </div>
-        </div>
+              <div className="absolute right-6 text-right">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Lens</p>
+                <p className="text-xs font-medium text-white/80">
+                  {facingMode === 'environment' ? 'Rear' : 'Front'}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>,
     document.body
@@ -393,6 +476,41 @@ function FlipIcon() {
         d="M16 4h4v4M20 4l-5.5 5.5M8 20H4v-4M4 20l5.5-5.5M7 7a7 7 0 0 1 10.5 1M17 17a7 7 0 0 1-10.5-1"
         stroke="currentColor"
         strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function RetakeIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4.5 12a7.5 7.5 0 0 1 12.7-5.4L19 9M19.5 12a7.5 7.5 0 0 1-12.7 5.4L5 15"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M19 5v4h-4M5 19v-4h4"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5.5 12.5 10 17l8.5-9"
+        stroke="currentColor"
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
