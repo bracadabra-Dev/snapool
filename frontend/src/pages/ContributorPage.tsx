@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, Photo, PublicEvent } from '../lib/api';
 import { compressForUpload } from '../lib/compress';
-import CameraButton from '../components/CameraButton';
+import CaptureActions from '../components/CaptureActions';
 import GalleryGrid from '../components/GalleryGrid';
 import Lightbox from '../components/Lightbox';
 
@@ -147,10 +147,10 @@ export default function ContributorPage() {
         </form>
       ) : (
         <div className="mb-6 space-y-3">
-          <CameraButton
-            disabled={!event.contributionOpen || !!status}
+          <CaptureActions
+            disabled={!!status}
+            contributionOpen={event.contributionOpen}
             onFile={(file) => void onFile(file)}
-            label={event.contributionOpen ? 'Open Camera' : 'Contribution closed'}
           />
           {status && (
             <div>
