@@ -41,7 +41,7 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
     async function start() {
       if (!navigator.mediaDevices?.getUserMedia) {
         onErrorRef.current(
-          'In-app camera is not supported on this device. Use Open Camera or Choose from gallery.'
+          'In-app camera is not supported on this device. Upload a photo from your gallery instead.'
         );
         return;
       }
@@ -85,7 +85,7 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
         }
       } catch {
         onErrorRef.current(
-          'Camera permission denied or unavailable. Use Open Camera or Choose from gallery instead.'
+          'Camera permission denied or unavailable. Allow camera access in site settings, or upload from your gallery.'
         );
       }
     }

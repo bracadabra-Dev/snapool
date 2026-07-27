@@ -1,10 +1,11 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { api, Photo, PublicEvent } from '../lib/api';
+import { api, ApiError, Photo, PublicEvent } from '../lib/api';
 import { compressForUpload } from '../lib/compress';
 import CaptureActions from '../components/CaptureActions';
 import GalleryGrid from '../components/GalleryGrid';
 import Lightbox from '../components/Lightbox';
+import ThankChip from '../components/ThankChip';
 
 const SESSION_KEY = (slug: string) => `spaisnap_contrib_${slug}`;
 
@@ -23,6 +24,13 @@ export default function ContributorPage() {
   const [selected, setSelected] = useState<Photo | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<FeedTab>('all');
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const highlightTimer = useRef<number | null>(null);
+  const tokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
 
   async function loadEvent() {
     setLoading(true);
@@ -50,8 +58,40 @@ export default function ContributorPage() {
   useEffect(() => {
     void loadEvent();
     void loadGallery();
-    const id = window.setInterval(() => void loadGallery(), 4000);
-    return () => window.clearInterval(id);
+
+    let id: number | null = null;
+
+    function startPoll() {
+      if (id != null) return;
+      id = window.setInterval(() => {
+        if (document.visibilityState === 'visible') void loadGallery();
+      }, 4000);
+    }
+
+    function stopPoll() {
+      if (id != null) {
+        window.clearInterval(id);
+        id = null;
+      }
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === 'visible') {
+        void loadGallery();
+        startPoll();
+      } else {
+        stopPoll();
+      }
+    }
+
+    if (document.visibilityState === 'visible') startPoll();
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      stopPoll();
+      document.removeEventListener('visibilitychange', onVisibility);
+      if (highlightTimer.current != null) window.clearTimeout(highlightTimer.current);
+    };
   }, [slug]);
 
   const feed = useMemo(() => {
@@ -60,13 +100,20 @@ export default function ContributorPage() {
     return photos;
   }, [photos, tab]);
 
-  async function ensureSession(providedName?: string): Promise<string> {
-    if (token) return token;
+  function clearSession() {
+    localStorage.removeItem(SESSION_KEY(slug));
+    setToken(null);
+    tokenRef.current = null;
+  }
+
+  async function ensureSession(providedName?: string, forceNew = false): Promise<string> {
+    if (!forceNew && tokenRef.current) return tokenRef.current;
     const res = await api.createSession(slug, {
       name: providedName || undefined,
     });
     localStorage.setItem(SESSION_KEY(slug), res.token);
     setToken(res.token);
+    tokenRef.current = res.token;
     return res.token;
   }
 
@@ -80,6 +127,12 @@ export default function ContributorPage() {
     }
   }
 
+  function pulseHighlight(photoId: string) {
+    setHighlightId(photoId);
+    if (highlightTimer.current != null) window.clearTimeout(highlightTimer.current);
+    highlightTimer.current = window.setTimeout(() => setHighlightId(null), 450);
+  }
+
   async function onFile(file: File) {
     if (!event?.contributionOpen) {
       setError('Contribution is closed for this event');
@@ -90,20 +143,44 @@ export default function ContributorPage() {
     setStatus('Compressing…');
     setProgress(15);
     try {
-      const session =
-        event.requireContributorName && !token
+      let session =
+        event.requireContributorName && !tokenRef.current
           ? await ensureSession(name)
           : await ensureSession();
       setProgress(40);
       setStatus('Uploading…');
       const { full, thumb } = await compressForUpload(file);
       setProgress(70);
-      await api.contributorUpload(slug, session, full, thumb);
-      setProgress(100);
-      setStatus(null);
-      setShowThanks(true);
-      await loadGallery();
-      setTimeout(() => setShowThanks(false), 4000);
+
+      try {
+        const res = await api.contributorUpload(slug, session, full, thumb);
+        setProgress(100);
+        setStatus(null);
+        setShowThanks(true);
+        await loadGallery();
+        pulseHighlight(res.photo.id);
+        setTimeout(() => setShowThanks(false), 4000);
+      } catch (uploadErr) {
+        if (uploadErr instanceof ApiError && uploadErr.status === 401) {
+          clearSession();
+          if (event.requireContributorName && !name.trim()) {
+            setStatus(null);
+            setProgress(0);
+            setError('Session expired — enter your name to continue');
+            return;
+          }
+          session = await ensureSession(name || undefined, true);
+          const res = await api.contributorUpload(slug, session, full, thumb);
+          setProgress(100);
+          setStatus(null);
+          setShowThanks(true);
+          await loadGallery();
+          pulseHighlight(res.photo.id);
+          setTimeout(() => setShowThanks(false), 4000);
+          return;
+        }
+        throw uploadErr;
+      }
     } catch (err) {
       setStatus(null);
       setProgress(0);
@@ -198,16 +275,19 @@ export default function ContributorPage() {
             The host hasn’t published the gallery yet. You can still contribute.
           </div>
         ) : (
-          <GalleryGrid variant="masonry" photos={feed} onSelect={setSelected} />
+          <GalleryGrid
+            variant="masonry"
+            photos={feed}
+            onSelect={setSelected}
+            highlightId={highlightId}
+          />
         )}
 
         {error && (
           <p className="mt-3 text-center text-sm text-[var(--danger)]">{error}</p>
         )}
         {showThanks && (
-          <div className="mt-3 rounded-2xl border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-2.5 text-center text-sm font-semibold text-[var(--accent)]">
-            {event.thankYouMessage || 'You’re in the pool.'}
-          </div>
+          <ThankChip message={event.thankYouMessage || 'You’re in the pool.'} />
         )}
       </div>
 
@@ -225,7 +305,7 @@ export default function ContributorPage() {
                   placeholder="Your name"
                   className="field flex-1 !rounded-2xl !py-2.5"
                 />
-                <button type="submit" className="btn-primary !rounded-2xl px-4 py-2.5 text-sm">
+                <button type="submit" className="btn-primary min-h-12 !rounded-2xl px-4 py-2.5 text-sm">
                   Join
                 </button>
               </div>
