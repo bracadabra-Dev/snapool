@@ -199,7 +199,7 @@ export async function proUpload(req: AuthedRequest, res: Response, next: NextFun
       where: { id: req.params.id, ownerId: req.user!.userId },
     });
     if (!event) {
-      res.status(404).json({ error: 'Event not found' });
+      res.status(403).json({ error: 'Only the event owner can upload Pro Shots' });
       return;
     }
 
@@ -224,6 +224,7 @@ export async function proUpload(req: AuthedRequest, res: Response, next: NextFun
       data: {
         id: photoId,
         eventId: event.id,
+        contributorId: null,
         type: 'pro',
         fullUrl,
         thumbUrl,

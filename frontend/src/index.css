@@ -56,11 +56,6 @@ body {
     radial-gradient(1200px 700px at 50% -20%, rgba(80, 90, 160, 0.18), transparent 60%);
 }
 
-.event-atmosphere > * {
-  position: relative;
-  z-index: 1;
-}
-
 #root {
   min-height: 100vh;
 }

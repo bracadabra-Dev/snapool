@@ -14,7 +14,7 @@ export function requireAuth(req: AuthedRequest, res: Response, next: NextFunctio
   try {
     const payload = verifyToken(header.slice(7));
     if (payload.type !== 'owner') {
-      res.status(401).json({ error: 'Owner token required' });
+      res.status(403).json({ error: 'Only the event owner can perform this action' });
       return;
     }
     req.user = payload;

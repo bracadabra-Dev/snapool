@@ -27,7 +27,9 @@ export default function ProShotUpload({ onUpload }: Props) {
     <div className="surface flex flex-wrap items-center justify-between gap-3 p-4">
       <div>
         <h3 className="font-display text-lg font-bold text-[var(--pro)]">Pro Shots</h3>
-        <p className="text-sm text-[var(--muted)]">Official photos — tagged separately in the pool.</p>
+        <p className="text-sm text-[var(--muted)]">
+          Official photos — owner only, tagged separately in the pool.
+        </p>
       </div>
       <button
         type="button"

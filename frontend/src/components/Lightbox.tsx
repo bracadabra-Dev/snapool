@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Photo } from '../lib/api';
 
 type Props = {
@@ -43,7 +44,10 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
   );
 
   useEffect(() => {
-    if (!photo) return;
+    if (!photo || index < 0) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
 
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -52,8 +56,16 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
     }
 
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [photo, onClose, go]);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [photo, index, onClose, go]);
+
+  useEffect(() => {
+    setDragX(0);
+    setAnimating(false);
+  }, [photo?.id]);
 
   if (!photo || index < 0) return null;
 
@@ -64,9 +76,9 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
         ? `Shot by ${photo.contributorName}`
         : 'Guest shot';
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/92 p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -74,7 +86,7 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
     >
       <button
         type="button"
-        className="absolute right-4 top-4 z-20 rounded-full bg-white/10 px-3 py-1 text-sm text-white"
+        className="absolute right-4 top-4 z-20 rounded-full bg-white/10 px-3 py-1.5 text-sm text-white"
         onClick={onClose}
       >
         Close
@@ -178,6 +190,7 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
           </span>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
