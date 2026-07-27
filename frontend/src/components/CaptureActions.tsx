@@ -5,9 +5,15 @@ type Props = {
   disabled?: boolean;
   onFile: (file: File) => void;
   contributionOpen?: boolean;
+  compact?: boolean;
 };
 
-export default function CaptureActions({ disabled, onFile, contributionOpen = true }: Props) {
+export default function CaptureActions({
+  disabled,
+  onFile,
+  contributionOpen = true,
+  compact = false,
+}: Props) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -24,18 +30,14 @@ export default function CaptureActions({ disabled, onFile, contributionOpen = tr
 
   if (!contributionOpen) {
     return (
-      <button
-        type="button"
-        disabled
-        className="w-full rounded-2xl bg-slate-700 px-6 py-4 text-lg font-semibold text-slate-300 opacity-60"
-      >
-        Contribution closed
-      </button>
+      <div className="border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-center text-sm text-[var(--muted)]">
+        Contributions closed
+      </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className={compact ? 'space-y-2' : 'space-y-2.5'}>
       <input
         ref={cameraInputRef}
         type="file"
@@ -56,34 +58,35 @@ export default function CaptureActions({ disabled, onFile, contributionOpen = tr
         type="button"
         disabled={disabled}
         onClick={() => cameraInputRef.current?.click()}
-        className="w-full rounded-2xl bg-cyan-500 px-6 py-4 text-lg font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+        className="btn-primary w-full py-3.5 text-base tracking-tight"
       >
         Open Camera
       </button>
 
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => galleryInputRef.current?.click()}
-        className="w-full rounded-2xl border border-slate-600 bg-slate-900 px-6 py-3 font-semibold text-slate-100 transition hover:border-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Choose from gallery
-      </button>
-
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => {
-          setCameraError(null);
-          setShowFilters(true);
-        }}
-        className="w-full py-2 text-sm font-medium text-cyan-400 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Snap with filters
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => galleryInputRef.current?.click()}
+          className="btn-ghost px-3 py-2.5 text-sm disabled:opacity-45"
+        >
+          From gallery
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => {
+            setCameraError(null);
+            setShowFilters(true);
+          }}
+          className="btn-ghost px-3 py-2.5 text-sm disabled:opacity-45"
+        >
+          Filters
+        </button>
+      </div>
 
       {cameraError && (
-        <p className="text-center text-sm text-rose-400">{cameraError}</p>
+        <p className="text-center text-xs text-[var(--danger)]">{cameraError}</p>
       )}
 
       {showFilters && (

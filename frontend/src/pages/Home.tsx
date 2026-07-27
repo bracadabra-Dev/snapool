@@ -5,39 +5,44 @@ export default function Home() {
   const { token } = useAuth();
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-16">
-      <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">SnapPool</p>
-      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-        Crowd-sourced event photography, one shared gallery.
-      </h1>
-      <p className="mt-4 max-w-2xl text-lg text-slate-300">
-        Create an event, share a QR code, and let every guest contribute photos — no app, no login.
-        Keep your Pro Shots distinct in the same live gallery.
-      </p>
-      <div className="mt-8 flex flex-wrap gap-3">
-        {token ? (
-          <Link
-            to="/dashboard"
-            className="rounded-xl bg-cyan-500 px-5 py-3 font-semibold text-slate-950"
-          >
-            Go to dashboard
-          </Link>
-        ) : (
-          <>
-            <Link
-              to="/register"
-              className="rounded-xl bg-cyan-500 px-5 py-3 font-semibold text-slate-950"
-            >
-              Get started
+    <div className="relative min-h-screen overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, color-mix(in srgb, var(--line) 80%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--line) 80%, transparent) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+          maskImage: 'radial-gradient(ellipse at center, black 20%, transparent 75%)',
+        }}
+      />
+
+      <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col justify-end px-5 pb-12 pt-10 sm:justify-center sm:pb-20">
+        <p className="font-display rise mb-4 text-sm font-bold uppercase tracking-[0.28em] text-[var(--accent)]">
+          SnapPool
+        </p>
+        <h1 className="font-display rise rise-delay-1 max-w-[11ch] text-[3.4rem] font-extrabold leading-[0.9] tracking-tight sm:text-7xl">
+          The event’s live gallery.
+        </h1>
+        <p className="rise rise-delay-2 mt-5 max-w-md text-base text-[var(--muted)] sm:text-lg">
+          One link. Every phone. A shared photo pool that fills in real time — no app, no guest
+          login.
+        </p>
+        <div className="rise rise-delay-2 mt-8 flex flex-wrap gap-3">
+          {token ? (
+            <Link to="/dashboard" className="btn-primary px-6 py-3.5 text-sm">
+              Open dashboard
             </Link>
-            <Link
-              to="/login"
-              className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-100"
-            >
-              Log in
-            </Link>
-          </>
-        )}
+          ) : (
+            <>
+              <Link to="/register" className="btn-primary px-6 py-3.5 text-sm">
+                Start an event
+              </Link>
+              <Link to="/login" className="btn-ghost px-6 py-3.5 text-sm">
+                Log in
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

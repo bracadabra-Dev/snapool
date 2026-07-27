@@ -27,16 +27,20 @@ export default function Login() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <h1 className="mb-6 text-3xl font-bold">Log in</h1>
-      <form onSubmit={onSubmit} className="space-y-4">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
+      <Link to="/" className="font-display mb-8 text-sm font-bold tracking-[0.2em] text-[var(--accent)]">
+        SNAPPOOL
+      </Link>
+      <h1 className="font-display text-4xl font-extrabold tracking-tight">Log in</h1>
+      <p className="mt-2 text-sm text-[var(--muted)]">Pick up where your events left off.</p>
+      <form onSubmit={onSubmit} className="mt-8 space-y-3">
         <input
           type="email"
           required
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
+          className="field"
         />
         <input
           type="password"
@@ -44,19 +48,18 @@ export default function Login() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
+          className="field"
         />
-        {error && <p className="text-sm text-rose-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-xl bg-cyan-500 py-3 font-semibold text-slate-950 disabled:opacity-50"
-        >
+        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+        <button type="submit" disabled={busy} className="btn-primary w-full py-3.5 text-sm">
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-      <p className="mt-4 text-sm text-slate-400">
-        No account? <Link className="text-cyan-400" to="/register">Register</Link>
+      <p className="mt-5 text-sm text-[var(--muted)]">
+        No account?{' '}
+        <Link className="font-semibold text-[var(--accent)]" to="/register">
+          Register
+        </Link>
       </p>
     </div>
   );

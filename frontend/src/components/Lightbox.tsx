@@ -170,11 +170,11 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
         />
       </div>
 
-      <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-slate-200">
+      <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2 bg-black/70 px-3 py-1.5 text-xs font-medium tracking-wide text-white/90 backdrop-blur-sm">
         {caption}
         {photos.length > 1 && (
-          <span className="ml-2 text-slate-400">
-            {index + 1} / {photos.length}
+          <span className="ml-2 tabular-nums text-white/50">
+            {index + 1}/{photos.length}
           </span>
         )}
       </div>

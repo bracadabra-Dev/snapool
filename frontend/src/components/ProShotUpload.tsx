@@ -24,21 +24,19 @@ export default function ProShotUpload({ onUpload }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-amber-300">Pro Shots</h3>
-          <p className="text-sm text-slate-400">Upload your official photos (kept visually distinct).</p>
-        </div>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => inputRef.current?.click()}
-          className="rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50"
-        >
-          {busy ? 'Uploading…' : 'Upload Pro Shot'}
-        </button>
+    <div className="surface flex flex-wrap items-center justify-between gap-3 p-4">
+      <div>
+        <h3 className="font-display text-lg font-bold text-[var(--pro)]">Pro Shots</h3>
+        <p className="text-sm text-[var(--muted)]">Official photos — tagged separately in the pool.</p>
       </div>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => inputRef.current?.click()}
+        className="rounded-xl bg-[var(--pro)] px-4 py-2.5 text-sm font-bold text-black disabled:opacity-50"
+      >
+        {busy ? 'Uploading…' : 'Upload Pro Shot'}
+      </button>
       <input
         ref={inputRef}
         type="file"
@@ -50,7 +48,7 @@ export default function ProShotUpload({ onUpload }: Props) {
           e.target.value = '';
         }}
       />
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+      {error && <p className="w-full text-sm text-[var(--danger)]">{error}</p>}
     </div>
   );
 }

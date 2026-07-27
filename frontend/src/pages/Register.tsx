@@ -34,16 +34,20 @@ export default function Register() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-10">
-      <h1 className="mb-6 text-3xl font-bold">Create account</h1>
-      <form onSubmit={onSubmit} className="space-y-4">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
+      <Link to="/" className="font-display mb-8 text-sm font-bold tracking-[0.2em] text-[var(--accent)]">
+        SNAPPOOL
+      </Link>
+      <h1 className="font-display text-4xl font-extrabold tracking-tight">Create account</h1>
+      <p className="mt-2 text-sm text-[var(--muted)]">Launch galleries your guests fill in real time.</p>
+      <form onSubmit={onSubmit} className="mt-8 space-y-3">
         <input
           type="email"
           required
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
+          className="field"
         />
         <input
           type="password"
@@ -52,12 +56,12 @@ export default function Register() {
           placeholder="Password (min 8 chars)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
+          className="field"
         />
         <select
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
+          className="field"
         >
           <option value="photographer">Photographer</option>
           <option value="organizer">Organizer</option>
@@ -68,19 +72,18 @@ export default function Register() {
           placeholder="Business name (optional)"
           value={businessName}
           onChange={(e) => setBusinessName(e.target.value)}
-          className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
+          className="field"
         />
-        {error && <p className="text-sm text-rose-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-xl bg-cyan-500 py-3 font-semibold text-slate-950 disabled:opacity-50"
-        >
+        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+        <button type="submit" disabled={busy} className="btn-primary w-full py-3.5 text-sm">
           {busy ? 'Creating…' : 'Create account'}
         </button>
       </form>
-      <p className="mt-4 text-sm text-slate-400">
-        Already have an account? <Link className="text-cyan-400" to="/login">Log in</Link>
+      <p className="mt-5 text-sm text-[var(--muted)]">
+        Already have an account?{' '}
+        <Link className="font-semibold text-[var(--accent)]" to="/login">
+          Log in
+        </Link>
       </p>
     </div>
   );
