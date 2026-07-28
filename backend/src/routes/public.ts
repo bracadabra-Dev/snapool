@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { signContributorToken } from '../lib/jwt';
 import { ContributorRequest } from '../middleware/requireContributor';
 import { uploadToR2 } from '../lib/r2';
+import { emitPhotoCreated } from '../realtime/io';
 
 function isContributionOpen(event: {
   contributionOpensAt: Date | null;
@@ -117,22 +118,29 @@ export async function getGallery(req: Request, res: Response, next: NextFunction
       return;
     }
 
+    const sinceRaw = typeof req.query.since === 'string' ? req.query.since : undefined;
+    const sinceDate = sinceRaw ? new Date(sinceRaw) : null;
+    const catchUp = sinceDate != null && !Number.isNaN(sinceDate.getTime());
+
     const page = Math.max(1, Number(req.query.page) || 1);
-    const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 60));
+    const pageSize = catchUp
+      ? Math.min(100, Math.max(1, Number(req.query.pageSize) || 100))
+      : Math.min(100, Math.max(1, Number(req.query.pageSize) || 60));
     const typeFilter = typeof req.query.type === 'string' ? req.query.type : undefined;
 
     const where = {
       eventId: event.id,
       status: 'published',
       ...(typeFilter === 'pro' || typeFilter === 'contributor' ? { type: typeFilter } : {}),
+      ...(catchUp ? { uploadedAt: { gte: sinceDate } } : {}),
     };
 
     const [total, photos] = await Promise.all([
       prisma.photo.count({ where }),
       prisma.photo.findMany({
         where,
-        orderBy: { uploadedAt: 'desc' },
-        skip: (page - 1) * pageSize,
+        orderBy: { uploadedAt: catchUp ? 'asc' : 'desc' },
+        skip: catchUp ? 0 : (page - 1) * pageSize,
         take: pageSize,
         include: {
           contributor: { select: { name: true } },
@@ -145,7 +153,7 @@ export async function getGallery(req: Request, res: Response, next: NextFunction
       type: p.type,
       fullUrl: p.fullUrl,
       thumbUrl: p.thumbUrl,
-      uploadedAt: p.uploadedAt,
+      uploadedAt: p.uploadedAt.toISOString(),
       contributorName: p.contributor?.name ?? null,
     }));
 
@@ -154,7 +162,7 @@ export async function getGallery(req: Request, res: Response, next: NextFunction
       pro: mapped.filter((p) => p.type === 'pro'),
       contributor: mapped.filter((p) => p.type === 'contributor'),
       total,
-      page,
+      page: catchUp ? 1 : page,
       pageSize,
     });
   } catch (err) {
@@ -224,9 +232,26 @@ export async function contributorUpload(
         thumbUrl,
         status,
       },
+      include: {
+        contributor: { select: { name: true } },
+      },
     });
 
-    res.status(201).json({ photo });
+    const payload = {
+      id: photo.id,
+      type: photo.type,
+      fullUrl: photo.fullUrl,
+      thumbUrl: photo.thumbUrl,
+      uploadedAt: photo.uploadedAt.toISOString(),
+      contributorName: photo.contributor?.name ?? null,
+      status: photo.status,
+    };
+
+    if (photo.status === 'published') {
+      emitPhotoCreated(event.slug, payload);
+    }
+
+    res.status(201).json({ photo: payload });
   } catch (err) {
     next(err);
   }

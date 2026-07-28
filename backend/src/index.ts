@@ -1,15 +1,18 @@
 import path from 'path';
+import http from 'http';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { env } from './config/env';
 import { requireAuth } from './middleware/requireAuth';
 import { requireContributor } from './middleware/requireContributor';
 import { uploadRateLimit } from './middleware/rateLimit';
+import { initRealtime } from './realtime/io';
 import * as auth from './routes/auth';
 import * as events from './routes/events';
 import * as publicRoutes from './routes/public';
 
 const app = express();
+const server = http.createServer(app);
 
 app.set('trust proxy', 1);
 app.use(cors());
@@ -75,6 +78,8 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(env.PORT, () => {
+initRealtime(server);
+
+server.listen(env.PORT, () => {
   console.log(`SnapPool API listening on port ${env.PORT}`);
 });

@@ -1,10 +1,12 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, EventDetail, Photo } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import GalleryGrid from '../components/GalleryGrid';
 import Lightbox from '../components/Lightbox';
 import ProShotUpload from '../components/ProShotUpload';
+import { useEventLiveRoom } from '../hooks/useEventLiveRoom';
+import { upsertPhotos } from '../lib/realtime';
 
 type Tab = 'all' | 'pro' | 'contributor';
 
@@ -31,6 +33,33 @@ export default function EventEdit() {
   useEffect(() => {
     void load();
   }, [token, id]);
+
+  const onPhotoCreated = useCallback((photo: Photo) => {
+    setEvent((prev) => {
+      if (!prev) return prev;
+      return { ...prev, photos: upsertPhotos(prev.photos || [], [photo]) };
+    });
+  }, []);
+
+  const onPhotoDeleted = useCallback((photoId: string) => {
+    setEvent((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        photos: (prev.photos || []).filter((p) => p.id !== photoId),
+      };
+    });
+  }, []);
+
+  useEventLiveRoom({
+    slug: event?.slug,
+    enabled: Boolean(event?.slug),
+    onPhotoCreated,
+    onPhotoDeleted,
+    onReconnect: () => {
+      void load();
+    },
+  });
 
   const photos = useMemo(() => {
     const list = event?.photos || [];
@@ -67,8 +96,8 @@ export default function EventEdit() {
 
   async function onProUpload(full: Blob, thumb: Blob) {
     if (!token || !event) return;
-    await api.proUpload(token, event.id, full, thumb);
-    await load();
+    const res = await api.proUpload(token, event.id, full, thumb);
+    onPhotoCreated(res.photo);
   }
 
   async function onDelete(photoId: string) {
@@ -76,7 +105,7 @@ export default function EventEdit() {
     if (!confirm('Delete this photo?')) return;
     try {
       await api.deletePhoto(token, event.id, photoId);
-      await load();
+      onPhotoDeleted(photoId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed');
     }

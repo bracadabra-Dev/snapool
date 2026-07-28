@@ -98,13 +98,15 @@ export const api = {
       { method: 'POST', body: JSON.stringify(body || {}) }
     ),
 
-  getGallery: (slug: string) =>
-    request<{
+  getGallery: (slug: string, opts?: { since?: string }) => {
+    const q = opts?.since ? `?since=${encodeURIComponent(opts.since)}` : '';
+    return request<{
       photos: Photo[];
       pro: Photo[];
       contributor: Photo[];
       total: number;
-    }>(`/api/e/${slug}/gallery`),
+    }>(`/api/e/${slug}/gallery${q}`);
+  },
 
   contributorUpload: (slug: string, token: string, full: Blob, thumb: Blob) => {
     const form = new FormData();

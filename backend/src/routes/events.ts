@@ -8,6 +8,7 @@ import { makeUniqueSlug } from '../utils/slug';
 import { generateAndStoreQr, generateQrDataUrl } from '../utils/qr';
 import { uploadToR2, deleteFromR2, publicUrlToKey } from '../lib/r2';
 import { env } from '../config/env';
+import { emitPhotoCreated, emitPhotoDeleted } from '../realtime/io';
 
 export const upload = multer({
   storage: multer.memoryStorage(),
@@ -232,7 +233,18 @@ export async function proUpload(req: AuthedRequest, res: Response, next: NextFun
       },
     });
 
-    res.status(201).json({ photo });
+    const payload = {
+      id: photo.id,
+      type: photo.type,
+      fullUrl: photo.fullUrl,
+      thumbUrl: photo.thumbUrl,
+      uploadedAt: photo.uploadedAt.toISOString(),
+      contributorName: null as string | null,
+      status: photo.status,
+    };
+    emitPhotoCreated(event.slug, payload);
+
+    res.status(201).json({ photo: payload });
   } catch (err) {
     next(err);
   }
@@ -254,6 +266,7 @@ export async function deletePhoto(req: AuthedRequest, res: Response, next: NextF
     ) as string[];
     await Promise.all(keys.map((k) => deleteFromR2(k).catch(() => undefined)));
     await prisma.photo.delete({ where: { id: photo.id } });
+    emitPhotoDeleted(photo.event.slug, photo.id);
     res.json({ ok: true });
   } catch (err) {
     next(err);

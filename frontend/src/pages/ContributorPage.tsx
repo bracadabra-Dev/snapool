@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError, Photo, PublicEvent } from '../lib/api';
 import { compressForUpload } from '../lib/compress';
@@ -6,7 +6,9 @@ import CaptureActions from '../components/CaptureActions';
 import GalleryGrid from '../components/GalleryGrid';
 import Lightbox from '../components/Lightbox';
 import ThankChip from '../components/ThankChip';
+import LiveStatusChip from '../components/LiveStatusChip';
 import { ImagesIcon, SparkIcon, UsersIcon } from '../components/icons';
+import { useEventLiveGallery } from '../hooks/useEventLiveGallery';
 
 const SESSION_KEY = (slug: string) => `spaisnap_contrib_${slug}`;
 
@@ -15,7 +17,6 @@ type FeedTab = 'all' | 'pro' | 'contributor';
 export default function ContributorPage() {
   const { slug = '' } = useParams();
   const [event, setEvent] = useState<PublicEvent | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +24,7 @@ export default function ContributorPage() {
   const [progress, setProgress] = useState(0);
   const [showThanks, setShowThanks] = useState(false);
   const [selected, setSelected] = useState<Photo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingEvent, setLoadingEvent] = useState(true);
   const [tab, setTab] = useState<FeedTab>('all');
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const highlightTimer = useRef<number | null>(null);
@@ -33,8 +34,30 @@ export default function ContributorPage() {
     tokenRef.current = token;
   }, [token]);
 
+  function pulseHighlight(photoId: string) {
+    setHighlightId(photoId);
+    if (highlightTimer.current != null) window.clearTimeout(highlightTimer.current);
+    highlightTimer.current = window.setTimeout(() => setHighlightId(null), 450);
+  }
+
+  const onLivePhoto = useCallback((photo: Photo) => {
+    // Remote arrivals get a subtle pop; self-upload also calls pulseHighlight explicitly
+    pulseHighlight(photo.id);
+  }, []);
+
+  const {
+    photos,
+    connection,
+    loading: loadingGallery,
+    addLocalPhoto,
+  } = useEventLiveGallery({
+    slug,
+    enabled: Boolean(slug && event?.galleryLive),
+    onPhotoCreated: onLivePhoto,
+  });
+
   async function loadEvent() {
-    setLoading(true);
+    setLoadingEvent(true);
     try {
       const res = await api.getPublicEvent(slug);
       setEvent(res.event);
@@ -43,56 +66,26 @@ export default function ContributorPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Event not found');
     } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadGallery() {
-    try {
-      const res = await api.getGallery(slug);
-      setPhotos(res.photos);
-    } catch {
-      // ignore transient poll errors
+      setLoadingEvent(false);
     }
   }
 
   useEffect(() => {
     void loadEvent();
-    void loadGallery();
-
-    let id: number | null = null;
-
-    function startPoll() {
-      if (id != null) return;
-      id = window.setInterval(() => {
-        if (document.visibilityState === 'visible') void loadGallery();
-      }, 4000);
-    }
-
-    function stopPoll() {
-      if (id != null) {
-        window.clearInterval(id);
-        id = null;
-      }
-    }
-
-    function onVisibility() {
-      if (document.visibilityState === 'visible') {
-        void loadGallery();
-        startPoll();
-      } else {
-        stopPoll();
-      }
-    }
-
-    if (document.visibilityState === 'visible') startPoll();
-    document.addEventListener('visibilitychange', onVisibility);
-
     return () => {
-      stopPoll();
-      document.removeEventListener('visibilitychange', onVisibility);
       if (highlightTimer.current != null) window.clearTimeout(highlightTimer.current);
     };
+  }, [slug]);
+
+  // Refresh event config when tab becomes visible (galleryLive may have flipped)
+  useEffect(() => {
+    function onVisibility() {
+      if (document.visibilityState === 'visible' && slug) {
+        void api.getPublicEvent(slug).then((res) => setEvent(res.event)).catch(() => undefined);
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [slug]);
 
   const feed = useMemo(() => {
@@ -128,10 +121,13 @@ export default function ContributorPage() {
     }
   }
 
-  function pulseHighlight(photoId: string) {
-    setHighlightId(photoId);
-    if (highlightTimer.current != null) window.clearTimeout(highlightTimer.current);
-    highlightTimer.current = window.setTimeout(() => setHighlightId(null), 450);
+  async function finishUpload(photo: Photo) {
+    setProgress(100);
+    setStatus(null);
+    setShowThanks(true);
+    addLocalPhoto(photo);
+    pulseHighlight(photo.id);
+    setTimeout(() => setShowThanks(false), 4000);
   }
 
   async function onFile(file: File) {
@@ -155,12 +151,7 @@ export default function ContributorPage() {
 
       try {
         const res = await api.contributorUpload(slug, session, full, thumb);
-        setProgress(100);
-        setStatus(null);
-        setShowThanks(true);
-        await loadGallery();
-        pulseHighlight(res.photo.id);
-        setTimeout(() => setShowThanks(false), 4000);
+        await finishUpload(res.photo);
       } catch (uploadErr) {
         if (uploadErr instanceof ApiError && uploadErr.status === 401) {
           clearSession();
@@ -172,12 +163,7 @@ export default function ContributorPage() {
           }
           session = await ensureSession(name || undefined, true);
           const res = await api.contributorUpload(slug, session, full, thumb);
-          setProgress(100);
-          setStatus(null);
-          setShowThanks(true);
-          await loadGallery();
-          pulseHighlight(res.photo.id);
-          setTimeout(() => setShowThanks(false), 4000);
+          await finishUpload(res.photo);
           return;
         }
         throw uploadErr;
@@ -189,7 +175,7 @@ export default function ContributorPage() {
     }
   }
 
-  if (loading) {
+  if (loadingEvent) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
         Loading gallery…
@@ -239,7 +225,6 @@ export default function ContributorPage() {
         )}
       </header>
 
-      {/* AllTrails-style section tabs */}
       <div className="sticky top-0 z-30 border-b border-white/10 bg-[var(--ink)]/80 px-4 backdrop-blur-xl">
         <div className="flex items-end gap-5">
           {(
@@ -267,10 +252,10 @@ export default function ContributorPage() {
               )}
             </button>
           ))}
-          <div className="ml-auto flex items-center gap-1.5 pb-3 pt-3 text-[11px] font-semibold tabular-nums text-white/45">
-            <span className="live-dot" />
-            {feed.length}
-          </div>
+          <LiveStatusChip
+            state={galleryHidden ? 'offline' : connection}
+            count={feed.length}
+          />
         </div>
       </div>
 
@@ -278,6 +263,10 @@ export default function ContributorPage() {
         {galleryHidden ? (
           <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-10 text-center text-sm text-[var(--muted)]">
             The host hasn’t published the gallery yet. You can still contribute.
+          </div>
+        ) : loadingGallery && !photos.length ? (
+          <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-10 text-center text-sm text-[var(--muted)]">
+            Loading shots…
           </div>
         ) : (
           <GalleryGrid
@@ -296,7 +285,6 @@ export default function ContributorPage() {
         )}
       </div>
 
-      {/* Soft floating capture sheet */}
       <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto max-w-lg rounded-[1.75rem] border border-white/10 bg-[var(--ink)]/90 p-3 shadow-[0_-12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           {needsNameGate ? (
