@@ -1,6 +1,6 @@
-# pixdump.net — Production UX/UI Redesign Spec
+# PixDump — Production UX/UI Redesign Spec
 **Status:** Engineering build reference  
-**Product:** pixdump.net (web) — live event crowd photography  
+**Product:** PixDump (web, [pixdump.net](https://pixdump.net)) — live event crowd photography  
 **Visual direction:** Bold, energetic, event-brand activation (camera-first social energy × venue night)  
 **Platform constraint:** Mobile web / PWA — browser camera APIs only (no native deep-link into Snapchat)  
 **Assumption:** Dark-mode-first for low-light venues  
@@ -12,7 +12,7 @@
 | Desired behavior | Web reality | Spec response |
 |---|---|---|
 | “Open Snapchat and shoot” | No reliable deep-link return of media to a web page | **Upload** = pick from camera roll (where Snapchat/IG saves land) |
-| In-app filtered camera | `getUserMedia` + Canvas filters | **Snap** = pixdump.net lens (permission-gated) |
+| In-app filtered camera | `getUserMedia` + Canvas filters | **Snap** = PixDump lens (permission-gated) |
 | Native system camera | `<input capture>` | Optional tertiary; current product = Snap + Upload only |
 | Keep shooting offline | Browser may kill stream; uploads need network | Queue uploads when online; never fake Snapchat handoff |
 | iOS Safari | Permission prompts, orientation, `playsInline`, PWA quirks | Explicit permission copy + orientation bake-in + portal overlays |
@@ -93,7 +93,7 @@ Equal visual weight in a 2-up dock; Snap uses brand fill, Upload uses ghost/outl
 - Title: `Add a photo you already took`  
 - Body: `Shot in Snapchat or another app? Save it to your camera roll, then choose it here.`  
 - CTA: `Choose photo` → native file picker  
-- Link: `Use pixdump.net camera instead` → closes sheet, opens Snap Lens  
+- Link: `Use PixDump camera instead` → closes sheet, opens Snap Lens  
 
 Persistent path after first visit: Upload goes straight to file picker.
 

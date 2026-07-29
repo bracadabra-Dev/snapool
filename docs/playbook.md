@@ -1,4 +1,4 @@
-# pixdump.net — Crowd-Sourced Event Photography Platform
+# PixDump — Crowd-Sourced Event Photography Platform
 ## Full Product & Business Playbook
 
 ---

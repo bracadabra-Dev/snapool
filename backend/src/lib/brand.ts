@@ -1,5 +1,8 @@
-/** Official platform name (user-facing). */
-export const PLATFORM_NAME = 'pixdump.net';
+/** Short product name for in-app UI and copy. */
+export const PLATFORM_NAME = 'PixDump';
+
+/** Official public domain (URLs, SEO, billing descriptors). */
+export const PLATFORM_DOMAIN = 'pixdump.net';
 
 /** Short slug for storage paths and service identifiers. */
 export const PLATFORM_SLUG = 'pixdump';

@@ -1,6 +1,6 @@
-# pixdump.net
+# PixDump
 
-Crowd-sourced event photography platform — Phase 1 MVP.
+Live event photo and video galleries at [pixdump.net](https://pixdump.net).
 
 ## Stack
 
