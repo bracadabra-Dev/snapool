@@ -41,8 +41,21 @@ if (!parsed.success) {
 }
 
 const nodeEnv = (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development';
-const featureVideoEnabled =
+const featureVideoRequested =
   process.env.FEATURE_VIDEO_ENABLED === 'true' || process.env.FEATURE_VIDEO_ENABLED === '1';
+const cloudinaryConfigured = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+);
+
+let featureVideoEnabled = featureVideoRequested;
+if (featureVideoRequested && nodeEnv === 'production' && !cloudinaryConfigured) {
+  console.warn(
+    'FEATURE_VIDEO_ENABLED is true but Cloudinary credentials are incomplete — video uploads disabled until configured'
+  );
+  featureVideoEnabled = false;
+}
 
 export const env = {
   NODE_ENV: nodeEnv,
@@ -66,11 +79,5 @@ export const env = {
   CAMPAY_API_URL: (process.env.CAMPAY_API_URL || 'https://api.campay.net/api').replace(/\/$/, ''),
   SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_EMAIL || '',
   isDev: nodeEnv !== 'production',
+  featureVideoRequested,
 };
-
-if (env.FEATURE_VIDEO_ENABLED && env.NODE_ENV === 'production') {
-  if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
-    console.error('FEATURE_VIDEO_ENABLED requires Cloudinary credentials in production');
-    process.exit(1);
-  }
-}

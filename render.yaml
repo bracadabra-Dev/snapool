@@ -28,3 +28,15 @@ services:
         sync: false
       - key: APP_PUBLIC_URL
         sync: false
+      - key: FEATURE_VIDEO_ENABLED
+        value: "false"
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_WEBHOOK_SECRET
+        sync: false
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
