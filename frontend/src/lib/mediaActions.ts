@@ -1,4 +1,5 @@
 import { Photo } from './api';
+import { PLATFORM_NAME } from './brand';
 
 function extensionFromUrl(url: string, fallback: string): string {
   try {
@@ -15,7 +16,7 @@ export function mediaFilename(photo: Photo): string {
     photo.mediaType === 'video'
       ? extensionFromUrl(photo.fullUrl, 'mp4')
       : extensionFromUrl(photo.fullUrl, 'jpg');
-  return `snappool-${photo.id.slice(0, 8)}.${ext}`;
+  return `pixdump-${photo.id.slice(0, 8)}.${ext}`;
 }
 
 export async function downloadMedia(photo: Photo): Promise<void> {
@@ -46,11 +47,11 @@ export async function downloadMedia(photo: Photo): Promise<void> {
 }
 
 export async function shareMedia(photo: Photo): Promise<'shared' | 'copied'> {
-  const title = photo.mediaType === 'video' ? 'SnapPool clip' : 'SnapPool photo';
+  const title = photo.mediaType === 'video' ? `${PLATFORM_NAME} clip` : `${PLATFORM_NAME} photo`;
   const text =
     photo.contributorName != null
-      ? `From ${photo.contributorName} on SnapPool`
-      : 'From SnapPool';
+      ? `From ${photo.contributorName} on ${PLATFORM_NAME}`
+      : `From ${PLATFORM_NAME}`;
 
   if (navigator.share) {
     try {

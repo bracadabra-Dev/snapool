@@ -1,5 +1,9 @@
-const TOKEN_KEY = 'spaisnap_owner_token';
-const USER_KEY = 'spaisnap_owner_user';
+import { legacyStorageKey, readStorageItem, storageKey } from './storageKeys';
+
+const TOKEN_KEY = storageKey('owner_token');
+const USER_KEY = storageKey('owner_user');
+const TOKEN_KEY_LEGACY = legacyStorageKey('owner_token');
+const USER_KEY_LEGACY = legacyStorageKey('owner_user');
 
 export type User = {
   id: string;
@@ -392,9 +396,11 @@ export type PaymentRecord = {
 };
 
 export function loadStoredAuth(): { token: string | null; user: User | null } {
+  const token = readStorageItem(TOKEN_KEY, TOKEN_KEY_LEGACY);
+  const userRaw = readStorageItem(USER_KEY, USER_KEY_LEGACY);
   return {
-    token: localStorage.getItem(TOKEN_KEY),
-    user: JSON.parse(localStorage.getItem(USER_KEY) || 'null'),
+    token,
+    user: userRaw ? JSON.parse(userRaw) : null,
   };
 }
 
@@ -406,4 +412,6 @@ export function storeAuth(token: string, user: User) {
 export function clearAuth() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(TOKEN_KEY_LEGACY);
+  localStorage.removeItem(USER_KEY_LEGACY);
 }

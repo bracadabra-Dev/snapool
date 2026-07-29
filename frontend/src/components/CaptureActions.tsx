@@ -6,7 +6,14 @@ import VideoMaintenanceSheet from '../features/video/VideoMaintenanceSheet';
 import { VideoCapabilities } from '../lib/api';
 import { CameraIcon, UploadIcon } from './icons';
 
-const UPLOAD_EXPLAINED_KEY = 'spaisnap_upload_explained';
+import { legacyStorageKey, readStorageItem, storageKey } from '../lib/storageKeys';
+
+const UPLOAD_EXPLAINED_KEY = storageKey('upload_explained');
+const UPLOAD_EXPLAINED_KEY_LEGACY = legacyStorageKey('upload_explained');
+
+function hasSeenUploadExplainer(): boolean {
+  return readStorageItem(UPLOAD_EXPLAINED_KEY, UPLOAD_EXPLAINED_KEY_LEGACY) === '1';
+}
 
 type Props = {
   disabled?: boolean;
@@ -39,8 +46,7 @@ export default function CaptureActions({
   }
 
   function handleUploadTap() {
-    const explained = localStorage.getItem(UPLOAD_EXPLAINED_KEY);
-    if (!explained) {
+    if (!hasSeenUploadExplainer()) {
       setShowExplainer(true);
       return;
     }

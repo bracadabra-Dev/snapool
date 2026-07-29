@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { PLATFORM_NAME } from '../lib/brand';
 
 type Props = {
   message?: string;
@@ -40,7 +41,7 @@ export default function PermissionSheet({
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
           {message ||
-            'SnapPool can’t access your camera. Allow camera access in your browser site settings, or upload a photo from your gallery instead.'}
+            `${PLATFORM_NAME} can’t access your camera. Allow camera access in your browser site settings, or upload a photo from your gallery instead.`}
         </p>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--muted)]">
           <li>Open site settings for this page</li>

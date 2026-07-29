@@ -87,7 +87,7 @@ model PlatformSettings {
   videoMaintenanceMessage String   @default("Video uploads are temporarily under maintenance")
   registrationEnabled     Boolean  @default(true)
   maintenanceMode         Boolean  @default(false)
-  maintenanceMessage      String   @default("SnapPool is temporarily under maintenance")
+  maintenanceMessage      String   @default("pixdump.net is temporarily under maintenance")
   defaultMaxPhotosPerContributor Int @default(20)
   defaultRetentionDays    Int      @default(7)
   uploadRateLimitPerMinute Int     @default(10)

@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import crypto from 'crypto';
 import { env } from '../../config/env';
+import { PLATFORM_SLUG } from '../../lib/brand';
 
 let configured = false;
 
@@ -27,7 +28,7 @@ export const EAGER_TRANSFORM_STRING = 'w_1280,c_limit,q_auto,f_mp4|w_400,c_fill,
 const EAGER_TRANSFORMS = EAGER_TRANSFORM_STRING;
 
 export function buildUploadFolder(eventId: string, type: 'contributor' | 'pro'): string {
-  return `spaisnap/events/${eventId}/${type}`;
+  return `${PLATFORM_SLUG}/events/${eventId}/${type}`;
 }
 
 export function signVideoUpload(params: {

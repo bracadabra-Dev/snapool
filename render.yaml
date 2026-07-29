@@ -1,4 +1,5 @@
 services:
+  # Render service id (legacy name); app brand: pixdump.net
   - type: web
     name: spaisnap
     runtime: node

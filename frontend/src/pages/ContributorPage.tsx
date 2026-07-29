@@ -12,7 +12,14 @@ import LiveStatusChip from '../components/LiveStatusChip';
 import { ImagesIcon, SparkIcon, UsersIcon } from '../components/icons';
 import { useEventLiveGallery } from '../hooks/useEventLiveGallery';
 
-const SESSION_KEY = (slug: string) => `spaisnap_contrib_${slug}`;
+import { legacyStorageKey, readStorageItem, storageKey } from '../lib/storageKeys';
+
+const SESSION_KEY = (slug: string) => storageKey(`contrib_${slug}`);
+const SESSION_KEY_LEGACY = (slug: string) => legacyStorageKey(`contrib_${slug}`);
+
+function loadContributorToken(slug: string): string | null {
+  return readStorageItem(SESSION_KEY(slug), SESSION_KEY_LEGACY(slug));
+}
 
 type FeedTab = 'all' | 'pro' | 'contributor';
 
@@ -65,7 +72,7 @@ export default function ContributorPage() {
     try {
       const res = await api.getPublicEvent(slug);
       setEvent(res.event);
-      const stored = localStorage.getItem(SESSION_KEY(slug));
+      const stored = loadContributorToken(slug);
       if (stored) setToken(stored);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Event not found');
@@ -100,6 +107,7 @@ export default function ContributorPage() {
 
   function clearSession() {
     localStorage.removeItem(SESSION_KEY(slug));
+    localStorage.removeItem(SESSION_KEY_LEGACY(slug));
     setToken(null);
     tokenRef.current = null;
   }

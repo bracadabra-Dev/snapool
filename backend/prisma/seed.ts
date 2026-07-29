@@ -23,7 +23,7 @@ async function main() {
     {
       id: 'free',
       name: 'Free',
-      description: 'Try SnapPool with one event and basic limits',
+      description: 'Try pixdump.net with one event and basic limits',
       sortOrder: 0,
       billingType: 'free',
       priceAmount: 0,

@@ -1,4 +1,4 @@
-# SnapPool (working name) — Crowd-Sourced Event Photography Platform
+# pixdump.net — Crowd-Sourced Event Photography Platform
 ## Full Product & Business Playbook
 
 ---

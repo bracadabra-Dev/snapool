@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import { PLATFORM_NAME_HEADER } from '../lib/brand';
 
 export default function Home() {
   const { token } = useAuth();
@@ -18,7 +19,7 @@ export default function Home() {
 
       <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col justify-end px-5 pb-12 pt-10 sm:justify-center sm:pb-20">
         <p className="font-display rise mb-4 text-sm font-bold uppercase tracking-[0.28em] text-[var(--accent)]">
-          SnapPool
+          {PLATFORM_NAME_HEADER}
         </p>
         <h1 className="font-display rise rise-delay-1 max-w-[11ch] text-[3.4rem] font-extrabold leading-[0.9] tracking-tight sm:text-7xl">
           The event’s live gallery.

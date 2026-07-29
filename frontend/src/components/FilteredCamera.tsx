@@ -483,7 +483,7 @@ export default function FilteredCamera({
           ) : (
             <img
               src={preview.url}
-              alt="Snap preview"
+              alt="Camera preview"
               className="h-full w-full object-cover"
             />
           )

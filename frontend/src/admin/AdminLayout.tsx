@@ -1,5 +1,6 @@
 import { NavLink, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import { PLATFORM_NAME } from '../lib/brand';
 
 const links = [
   ['', 'Dashboard'],
@@ -25,7 +26,7 @@ export default function AdminLayout() {
       <div className="mx-auto flex max-w-7xl gap-6 px-4 py-6">
         <aside className="hidden w-52 shrink-0 md:block">
           <p className="font-display text-xs font-bold tracking-[0.22em] text-[var(--accent)]">ADMIN</p>
-          <h1 className="font-display mt-1 text-2xl font-extrabold">SnapPool Ops</h1>
+          <h1 className="font-display mt-1 text-2xl font-extrabold">{PLATFORM_NAME} Ops</h1>
           <nav className="mt-6 space-y-1">
             {links.map(([path, label]) => (
               <NavLink

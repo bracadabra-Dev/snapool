@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, EventSummary } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { PLATFORM_NAME_HEADER } from '../lib/brand';
 
 export default function Dashboard() {
   const { token, user, logout } = useAuth();
@@ -49,7 +50,7 @@ export default function Dashboard() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-display text-xs font-bold tracking-[0.22em] text-[var(--accent)]">
-            SNAPPOOL
+            {PLATFORM_NAME_HEADER}
           </p>
           <h1 className="font-display mt-1 text-4xl font-extrabold tracking-tight">Events</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">

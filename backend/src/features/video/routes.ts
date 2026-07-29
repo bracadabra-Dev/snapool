@@ -248,7 +248,7 @@ export async function cloudinaryWebhook(req: Request, res: Response, next: NextF
     }
 
     const folder = (notification.folder as string) || '';
-    const match = folder.match(/^spaisnap\/events\/([^/]+)\/(contributor|pro)$/);
+    const match = folder.match(/^(?:pixdump|spaisnap)\/events\/([^/]+)\/(contributor|pro)$/);
     if (!match) {
       res.json({ ok: true });
       return;

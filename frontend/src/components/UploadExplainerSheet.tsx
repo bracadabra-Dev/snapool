@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { formatVideoSizeLimit } from '../features/video/validateVideo';
+import { PLATFORM_NAME } from '../lib/brand';
 
 type Props = {
   videoAvailable?: boolean;
@@ -61,7 +62,7 @@ export default function UploadExplainerSheet({
             className="btn-ghost min-h-12 w-full py-3.5 text-sm"
             onClick={onUseSnap}
           >
-            Use SnapPool camera instead
+            Use {PLATFORM_NAME} camera instead
           </button>
         </div>
       </div>

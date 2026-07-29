@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '../../lib/prisma';
+import { PLATFORM_NAME } from '../../lib/brand';
 import { env } from '../../config/env';
 import { invalidatePlatformCache } from '../../lib/platformConfig';
 
@@ -78,7 +79,7 @@ export async function createCheckout(params: {
     body: JSON.stringify({
       amount: String(amount),
       currency,
-      description: planId ? `SnapPool ${planId}` : `SnapPool add-on ${addOnId}`,
+      description: planId ? `${PLATFORM_NAME} ${planId}` : `${PLATFORM_NAME} add-on ${addOnId}`,
       external_reference: reference,
       redirect_url: `${env.APP_PUBLIC_URL}/dashboard?payment=${reference}`,
       username: user?.email,

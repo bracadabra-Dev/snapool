@@ -2,6 +2,7 @@ import path from 'path';
 import http from 'http';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import { PLATFORM_NAME, PLATFORM_SLUG } from './lib/brand';
 import { env } from './config/env';
 import { requireAuth } from './middleware/requireAuth';
 import { requireContributor } from './middleware/requireContributor';
@@ -30,7 +31,7 @@ app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, service: 'spaisnap', env: env.NODE_ENV });
+  res.json({ ok: true, service: PLATFORM_SLUG, env: env.NODE_ENV });
 });
 
 app.get('/api/public/config', publicConfig.publicConfig);
@@ -155,5 +156,5 @@ void getPlatformSettings().then((platform) => {
 });
 
 server.listen(env.PORT, () => {
-  console.log(`SnapPool API listening on port ${env.PORT}`);
+  console.log(`${PLATFORM_NAME} API listening on port ${env.PORT}`);
 });

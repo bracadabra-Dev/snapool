@@ -1,4 +1,4 @@
-# SnapPool (spaisnap)
+# pixdump.net
 
 Crowd-sourced event photography platform — Phase 1 MVP.
 
@@ -65,7 +65,7 @@ Vite proxies `/api` to the backend.
 1. Create a Neon project and copy pooled + direct connection strings.
 2. Create an R2 bucket and API token; enable a public URL (r2.dev or custom domain).
 3. Connect this repo on Render (or use `render.yaml`).
-4. Set all env vars above. Set `APP_PUBLIC_URL` to your Render URL (e.g. `https://spaisnap.onrender.com`).
+4. Set all env vars above. Set `APP_PUBLIC_URL` to your public URL (e.g. `https://pixdump.net` or your Render URL).
 5. Build: `npm install --include=dev && npm run build`  
    (Render sets `NODE_ENV=production`, which would otherwise skip Vite/TypeScript.)  
    Start: `npm start` (`prisma migrate deploy` then Node).
