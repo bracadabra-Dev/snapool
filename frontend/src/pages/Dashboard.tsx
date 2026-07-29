@@ -52,18 +52,31 @@ export default function Dashboard() {
             SNAPPOOL
           </p>
           <h1 className="font-display mt-1 text-4xl font-extrabold tracking-tight">Events</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">{user?.email}</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            {user?.email}
+            {user?.plan ? ` · ${user.plan}` : ''}
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            logout();
-            navigate('/');
-          }}
-          className="btn-ghost px-4 py-2 text-sm"
-        >
-          Log out
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/pricing" className="btn-ghost px-4 py-2 text-sm">
+            Pricing
+          </Link>
+          {user?.isSuperAdmin && (
+            <Link to="/admin" className="btn-ghost px-4 py-2 text-sm">
+              Admin
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              navigate('/');
+            }}
+            className="btn-ghost px-4 py-2 text-sm"
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <form onSubmit={onCreate} className="surface mb-6 flex flex-col gap-2 p-3 sm:flex-row sm:items-center">

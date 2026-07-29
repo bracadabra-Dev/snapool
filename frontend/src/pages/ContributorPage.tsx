@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { api, ApiError, Photo, PublicEvent } from '../lib/api';
 import { compressForUpload } from '../lib/compress';
 import CaptureActions from '../components/CaptureActions';
+import VideoCaptureButton from '../features/video/VideoCaptureButton';
+import { useVideoCapabilities } from '../features/video/useVideoCapabilities';
 import GalleryGrid from '../components/GalleryGrid';
 import Lightbox from '../components/Lightbox';
 import ThankChip from '../components/ThankChip';
@@ -44,6 +46,8 @@ export default function ContributorPage() {
     // Remote arrivals get a subtle pop; self-upload also calls pulseHighlight explicitly
     pulseHighlight(photo.id);
   }, []);
+
+  const { video } = useVideoCapabilities(slug);
 
   const {
     photos,
@@ -311,6 +315,23 @@ export default function ContributorPage() {
                 contributionOpen={event.contributionOpen}
                 onFile={(file) => void onFile(file)}
               />
+              {video && token && (
+                <VideoCaptureButton
+                  slug={slug}
+                  contributorToken={token}
+                  video={video}
+                  disabled={!!status}
+                  onSignature={async () => {
+                    const session = await ensureSession();
+                    return api.contributorVideoSignature(slug, session);
+                  }}
+                  onComplete={async (body) => {
+                    const session = tokenRef.current || (await ensureSession());
+                    const res = await api.contributorVideoComplete(slug, session, body);
+                    await finishUpload(res.photo);
+                  }}
+                />
+              )}
               {status && (
                 <div className="mt-2 px-1">
                   <div className="mb-1 flex justify-between text-[11px] text-[var(--muted)]">

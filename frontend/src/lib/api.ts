@@ -7,15 +7,19 @@ export type User = {
   role: string;
   businessName?: string | null;
   plan: string;
+  planExpiresAt?: string | null;
+  isSuperAdmin?: boolean;
 };
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -33,10 +37,29 @@ async function request<T>(
   const res = await fetch(path, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new ApiError(data.error || `Request failed (${res.status})`, res.status);
+    throw new ApiError(data.error || `Request failed (${res.status})`, res.status, data.code);
   }
   return data as T;
 }
+
+export type VideoCapabilities = {
+  state: 'available' | 'maintenance' | 'plan_required' | 'disabled_by_owner';
+  message?: string;
+  maxDurationSec?: number;
+  maxPerEvent?: number;
+  maxPerContributor?: number;
+};
+
+export type PlanPublic = {
+  id: string;
+  name: string;
+  description?: string | null;
+  billingType: string;
+  priceAmount: number;
+  priceInterval?: string | null;
+  highlightLabel?: string | null;
+  features: Record<string, unknown>;
+};
 
 export const api = {
   register: (body: {
@@ -55,6 +78,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  me: (token: string) => request<{ user: User }>('/api/auth/me', {}, token),
 
   listEvents: (token: string) =>
     request<{ events: EventSummary[] }>('/api/events', {}, token),
@@ -92,6 +117,11 @@ export const api = {
   getPublicEvent: (slug: string) =>
     request<{ event: PublicEvent }>(`/api/e/${slug}`),
 
+  getCapabilities: (slug: string) =>
+    request<{ photos: { maxPerContributor: number }; video: VideoCapabilities; features: Record<string, boolean> }>(
+      `/api/e/${slug}/capabilities`
+    ),
+
   createSession: (slug: string, body?: { name?: string; phone?: string }) =>
     request<{ token: string; contributor: { id: string; name: string | null; maxPhotos: number } }>(
       `/api/e/${slug}/session`,
@@ -117,13 +147,104 @@ export const api = {
       body: form,
     }, token);
   },
+
+  contributorVideoSignature: (slug: string, token: string) =>
+    request<{ upload: VideoUploadParams; maxDurationSec: number }>(
+      `/api/e/${slug}/video/signature`,
+      { method: 'POST' },
+      token
+    ),
+
+  contributorVideoComplete: (slug: string, token: string, body: VideoCompleteBody) =>
+    request<{ photo: Photo }>(`/api/e/${slug}/video/complete`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, token),
+
+  ownerVideoSignature: (token: string, eventId: string) =>
+    request<{ upload: VideoUploadParams; maxDurationSec: number }>(
+      `/api/events/${eventId}/video/signature`,
+      { method: 'POST' },
+      token
+    ),
+
+  ownerVideoComplete: (token: string, eventId: string, body: VideoCompleteBody) =>
+    request<{ photo: Photo }>(`/api/events/${eventId}/video/complete`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, token),
+
+  getPublicPlans: () =>
+    request<{ plans: PlanPublic[]; addons: Array<{ id: string; name: string; priceAmount: number; description?: string | null }> }>(
+      '/api/public/plans'
+    ),
+
+  checkout: (token: string, body: { planId?: string; addOnId?: string; eventId?: string }) =>
+    request<{ paymentId: string; checkoutUrl: string | null; reference: string; devComplete?: boolean }>(
+      '/api/billing/checkout',
+      { method: 'POST', body: JSON.stringify(body) },
+      token
+    ),
+
+  devCompletePayment: (token: string, reference: string) =>
+    request<{ ok: boolean }>(`/api/billing/dev-complete/${reference}`, { method: 'POST' }, token),
+
+  admin: {
+    dashboard: (token: string) => request<AdminDashboard>('/api/admin/dashboard', {}, token),
+    getPlatform: (token: string) => request<{ platform: PlatformSettings }>('/api/admin/platform', {}, token),
+    patchPlatform: (token: string, body: Partial<PlatformSettings>) =>
+      request<{ platform: PlatformSettings }>('/api/admin/platform', {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }, token),
+    listPlans: (token: string) => request<{ plans: PlanDefinition[] }>('/api/admin/plans', {}, token),
+    patchPlan: (token: string, id: string, body: Partial<PlanDefinition>) =>
+      request<{ plan: PlanDefinition }>(`/api/admin/plans/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }, token),
+    listAudit: (token: string, page = 1) =>
+      request<{ logs: AuditLog[]; total: number }>(`/api/admin/audit?page=${page}`, {}, token),
+    listUsers: (token: string, q = '') =>
+      request<{ users: AdminUser[]; total: number }>(`/api/admin/users?q=${encodeURIComponent(q)}`, {}, token),
+    patchUser: (token: string, id: string, body: Record<string, unknown>) =>
+      request(`/api/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, token),
+    listEvents: (token: string, q = '') =>
+      request<{ events: AdminEvent[]; total: number }>(`/api/admin/events?q=${encodeURIComponent(q)}`, {}, token),
+    patchEvent: (token: string, id: string, body: Record<string, unknown>) =>
+      request(`/api/admin/events/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, token),
+    listPayments: (token: string) =>
+      request<{ payments: PaymentRecord[]; total: number }>('/api/admin/payments', {}, token),
+    runRetention: (token: string) =>
+      request<{ eventsProcessed: number; photosDeleted: number }>('/api/admin/jobs/retention', { method: 'POST' }, token),
+  },
+};
+
+export type VideoUploadParams = {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  signature: string;
+  folder: string;
+  eager: string;
+  eagerAsync: boolean;
+  notificationUrl?: string;
+};
+
+export type VideoCompleteBody = {
+  publicId: string;
+  fullUrl: string;
+  thumbUrl: string;
+  duration?: number;
 };
 
 export type Photo = {
   id: string;
   type: string;
+  mediaType?: string;
   fullUrl: string;
   thumbUrl: string;
+  duration?: number;
   uploadedAt: string;
   contributorName?: string | null;
   status?: string;
@@ -146,11 +267,14 @@ export type EventConfig = {
   galleryLive: boolean;
   moderationMode: string;
   maxPhotosPerContributor: number;
+  maxVideosPerContributor?: number | null;
   requireContributorName: boolean;
   thankYouMessage?: string | null;
   brandingLogoUrl?: string | null;
   coverImageUrl?: string | null;
   retentionDays: number;
+  videoEnabled?: boolean;
+  paidFeaturesUnlocked?: boolean;
   contributionOpensAt?: string | null;
   contributionClosesAt?: string | null;
 };
@@ -179,6 +303,92 @@ export type PublicEvent = {
   maxPhotosPerContributor: number;
   ownerBusinessName?: string | null;
   ownerPortfolioUrl?: string | null;
+};
+
+export type PlatformSettings = {
+  videoEnabled: boolean;
+  videoMaintenanceMessage: string;
+  registrationEnabled: boolean;
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+  defaultMaxPhotosPerContributor: number;
+  defaultRetentionDays: number;
+  uploadRateLimitPerMinute: number;
+  currency: string;
+};
+
+export type PlanDefinition = {
+  id: string;
+  name: string;
+  description?: string | null;
+  active: boolean;
+  sortOrder: number;
+  billingType: string;
+  priceAmount: number;
+  priceInterval?: string | null;
+  maxActiveEvents?: number | null;
+  maxPhotosPerContributor: number;
+  maxRetentionDays: number;
+  allowCustomBranding: boolean;
+  allowZipDownload: boolean;
+  allowVideo: boolean;
+  maxVideosPerEvent: number;
+  maxVideosPerContributor: number;
+  maxVideoDurationSec: number;
+  highlightLabel?: string | null;
+};
+
+export type AdminDashboard = {
+  stats: { userCount: number; eventCount: number; photoCount: number; videoCount: number; uploads24h: number };
+  platform: PlatformSettings;
+  videoForcedOffByEnv: boolean;
+  recentAudit: AuditLog[];
+};
+
+export type AuditLog = {
+  id: string;
+  action: string;
+  target?: string | null;
+  before?: unknown;
+  after?: unknown;
+  createdAt: string;
+  admin: { email: string };
+};
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  role: string;
+  plan: string;
+  planExpiresAt?: string | null;
+  isSuperAdmin: boolean;
+  suspended: boolean;
+  createdAt: string;
+  _count: { events: number };
+};
+
+export type AdminEvent = {
+  id: string;
+  name: string;
+  slug: string;
+  videoEnabled: boolean;
+  paidFeaturesUnlocked: boolean;
+  retentionDays: number;
+  galleryLive: boolean;
+  owner: { email: string; plan: string };
+  _count: { photos: number; contributors: number };
+};
+
+export type PaymentRecord = {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  planId?: string | null;
+  addOnId?: string | null;
+  createdAt: string;
+  user?: { email: string } | null;
+  event?: { name: string; slug: string } | null;
 };
 
 export function loadStoredAuth(): { token: string | null; user: User | null } {

@@ -5,8 +5,10 @@ import { prisma } from '../lib/prisma';
 export type LivePhotoPayload = {
   id: string;
   type: string;
+  mediaType?: string;
   fullUrl: string;
   thumbUrl: string;
+  duration?: number;
   uploadedAt: string;
   contributorName?: string | null;
   status?: string;

@@ -6,6 +6,8 @@ import { signContributorToken } from '../lib/jwt';
 import { ContributorRequest } from '../middleware/requireContributor';
 import { uploadToR2 } from '../lib/r2';
 import { emitPhotoCreated } from '../realtime/io';
+import { getEffectiveLimits } from '../lib/platformConfig';
+import { assertPhotoUploadAllowed, PlanError, sendPlanError } from '../lib/plans';
 
 function isContributionOpen(event: {
   contributionOpensAt: Date | null;
@@ -151,8 +153,10 @@ export async function getGallery(req: Request, res: Response, next: NextFunction
     const mapped = photos.map((p) => ({
       id: p.id,
       type: p.type,
+      mediaType: p.mediaType,
       fullUrl: p.fullUrl,
       thumbUrl: p.thumbUrl,
+      duration: p.duration ?? undefined,
       uploadedAt: p.uploadedAt.toISOString(),
       contributorName: p.contributor?.name ?? null,
     }));
@@ -170,13 +174,40 @@ export async function getGallery(req: Request, res: Response, next: NextFunction
   }
 }
 
+export async function getCapabilities(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const event = await prisma.event.findUnique({
+      where: { slug: req.params.slug },
+      include: { owner: true },
+    });
+    if (!event) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+
+    const limits = await getEffectiveLimits(event.owner, event);
+    res.json({
+      photos: {
+        maxPerContributor: limits.photos.maxPerContributor,
+      },
+      video: limits.video,
+      features: limits.features,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function contributorUpload(
   req: ContributorRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
-    const event = await prisma.event.findUnique({ where: { slug: req.params.slug } });
+    const event = await prisma.event.findUnique({
+      where: { slug: req.params.slug },
+      include: { owner: true },
+    });
     if (!event) {
       res.status(404).json({ error: 'Event not found' });
       return;
@@ -190,19 +221,14 @@ export async function contributorUpload(
       return;
     }
 
-    const count = await prisma.photo.count({
+    const photoCount = await prisma.photo.count({
       where: {
         eventId: event.id,
         contributorId: req.contributor!.contributorId,
+        mediaType: 'photo',
       },
     });
-    if (count >= event.maxPhotosPerContributor) {
-      res.status(403).json({
-        error: 'Photo limit reached for this contributor',
-        max: event.maxPhotosPerContributor,
-      });
-      return;
-    }
+    await assertPhotoUploadAllowed(event.owner, event, photoCount);
 
     const files = req.files as { full?: Express.Multer.File[]; thumb?: Express.Multer.File[] };
     const full = files?.full?.[0];
@@ -240,6 +266,7 @@ export async function contributorUpload(
     const payload = {
       id: photo.id,
       type: photo.type,
+      mediaType: photo.mediaType,
       fullUrl: photo.fullUrl,
       thumbUrl: photo.thumbUrl,
       uploadedAt: photo.uploadedAt.toISOString(),
@@ -253,6 +280,10 @@ export async function contributorUpload(
 
     res.status(201).json({ photo: payload });
   } catch (err) {
+    if (err instanceof PlanError) {
+      sendPlanError(res, err);
+      return;
+    }
     next(err);
   }
 }

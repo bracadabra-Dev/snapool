@@ -17,32 +17,41 @@ model User {
   portfolioUrl  String?
   plan          String    @default("free") // "free" | "pro" | "studio" | "event_pass"
   planExpiresAt DateTime?
+  isSuperAdmin  Boolean   @default(false)
+  suspended     Boolean   @default(false)
   createdAt     DateTime  @default(now())
   events        Event[]
+  payments      PaymentRecord[]
+  auditLogs     AdminAuditLog[]
 }
 
 model Event {
-  id                      String        @id @default(uuid())
+  id                      String             @id @default(uuid())
   ownerId                 String
-  owner                   User          @relation(fields: [ownerId], references: [id])
+  owner                   User               @relation(fields: [ownerId], references: [id])
   name                    String
-  slug                    String        @unique
+  slug                    String             @unique
   coverImageUrl           String?
   qrCodeUrl               String?
-  visibility              String        @default("unlisted") // "public" | "unlisted" | "password"
+  visibility              String             @default("unlisted") // "public" | "unlisted" | "password"
   passwordHash            String?
   contributionOpensAt     DateTime?
   contributionClosesAt    DateTime?
-  galleryLive             Boolean       @default(true)
-  moderationMode          String        @default("auto") // "auto" | "manual"
-  maxPhotosPerContributor Int           @default(20)
-  requireContributorName  Boolean       @default(false)
+  galleryLive             Boolean            @default(true)
+  moderationMode          String             @default("auto") // "auto" | "manual"
+  maxPhotosPerContributor Int                @default(20)
+  maxVideosPerContributor Int?
+  requireContributorName  Boolean            @default(false)
   brandingLogoUrl         String?
   thankYouMessage         String?
-  retentionDays           Int           @default(7)
-  createdAt               DateTime      @default(now())
+  retentionDays           Int                @default(7)
+  videoEnabled            Boolean            @default(false)
+  paidFeaturesUnlocked    Boolean            @default(false)
+  createdAt               DateTime           @default(now())
   photos                  Photo[]
   contributors            Contributor[]
+  entitlements            EventEntitlement[]
+  payments                PaymentRecord[]
 }
 
 model Contributor {
@@ -57,14 +66,104 @@ model Contributor {
 }
 
 model Photo {
-  id            String       @id @default(uuid())
-  eventId       String
-  event         Event        @relation(fields: [eventId], references: [id])
-  contributorId String?
-  contributor   Contributor? @relation(fields: [contributorId], references: [id])
-  type          String // "pro" | "contributor"
-  fullUrl       String
-  thumbUrl      String
-  status        String       @default("published") // "pending" | "published" | "rejected"
-  uploadedAt    DateTime     @default(now())
+  id                 String       @id @default(uuid())
+  eventId            String
+  event              Event        @relation(fields: [eventId], references: [id])
+  contributorId      String?
+  contributor        Contributor? @relation(fields: [contributorId], references: [id])
+  type               String // "pro" | "contributor"
+  mediaType          String       @default("photo") // "photo" | "video"
+  fullUrl            String
+  thumbUrl           String
+  duration           Int?
+  cloudinaryPublicId String?
+  status             String       @default("published") // "pending" | "published" | "rejected"
+  uploadedAt         DateTime     @default(now())
+}
+
+model PlatformSettings {
+  id                      String   @id @default("platform")
+  videoEnabled            Boolean  @default(false)
+  videoMaintenanceMessage String   @default("Video uploads are temporarily under maintenance")
+  registrationEnabled     Boolean  @default(true)
+  maintenanceMode         Boolean  @default(false)
+  maintenanceMessage      String   @default("SnapPool is temporarily under maintenance")
+  defaultMaxPhotosPerContributor Int @default(20)
+  defaultRetentionDays    Int      @default(7)
+  uploadRateLimitPerMinute Int     @default(10)
+  currency                String   @default("XAF")
+  updatedAt               DateTime @updatedAt
+  updatedBy               String?
+}
+
+model PlanDefinition {
+  id                      String  @id
+  name                    String
+  description             String?
+  active                  Boolean @default(true)
+  sortOrder               Int     @default(0)
+  billingType             String  // "free" | "subscription" | "one_time" | "addon"
+  priceAmount             Int     @default(0)
+  priceInterval           String? // "month" | "year" | null
+  campayProductId         String?
+  maxActiveEvents         Int?
+  maxPhotosPerContributor Int     @default(20)
+  maxRetentionDays        Int     @default(7)
+  allowCustomBranding     Boolean @default(false)
+  allowZipDownload        Boolean @default(false)
+  allowManualModeration   Boolean @default(true)
+  allowVideo              Boolean @default(false)
+  maxVideosPerEvent       Int     @default(0)
+  maxVideosPerContributor Int     @default(0)
+  maxVideoDurationSec     Int     @default(0)
+  highlightLabel          String?
+}
+
+model AddOnDefinition {
+  id              String   @id
+  name            String
+  description     String?
+  active          Boolean  @default(true)
+  priceAmount     Int      @default(0)
+  campayProductId String?
+  appliesToPlans  String[] @default([])
+  grantsJson      Json     @default("{}")
+}
+
+model EventEntitlement {
+  id          String    @id @default(uuid())
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  addOnId     String
+  purchasedAt DateTime  @default(now())
+  expiresAt   DateTime?
+}
+
+model PaymentRecord {
+  id              String   @id @default(uuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id])
+  eventId         String?
+  event           Event?   @relation(fields: [eventId], references: [id])
+  planId          String?
+  addOnId         String?
+  campayTxId      String?  @unique
+  amount          Int
+  currency        String   @default("XAF")
+  status          String   @default("pending") // "pending" | "completed" | "failed"
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+}
+
+model AdminAuditLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  admin     User     @relation(fields: [adminId], references: [id])
+  action    String
+  target    String?
+  before    Json?
+  after     Json?
+  ip        String?
+  createdAt DateTime @default(now())
 }

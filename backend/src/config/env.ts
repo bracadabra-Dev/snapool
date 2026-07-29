@@ -17,20 +17,35 @@ const envSchema = z.object({
   R2_BUCKET_NAME: z.string().min(1),
   R2_PUBLIC_URL_BASE: z.string().url(),
   APP_PUBLIC_URL: z.string().url(),
+  FEATURE_VIDEO_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true' || v === '1'),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_WEBHOOK_SECRET: z.string().optional(),
+  CAMPAY_API_KEY: z.string().optional(),
+  CAMPAY_WEBHOOK_SECRET: z.string().optional(),
+  CAMPAY_API_URL: z.string().url().optional(),
+  SUPER_ADMIN_EMAIL: z.string().email().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
   console.error('Invalid environment variables:', parsed.error.flatten().fieldErrors);
-  // Allow boot with placeholders in development if missing — still fail loudly
   if (process.env.NODE_ENV === 'production') {
     process.exit(1);
   }
 }
 
+const nodeEnv = (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development';
+const featureVideoEnabled =
+  process.env.FEATURE_VIDEO_ENABLED === 'true' || process.env.FEATURE_VIDEO_ENABLED === '1';
+
 export const env = {
-  NODE_ENV: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
+  NODE_ENV: nodeEnv,
   PORT: Number(process.env.PORT || 3000),
   DATABASE_URL: process.env.DATABASE_URL || '',
   DIRECT_URL: process.env.DIRECT_URL || process.env.DATABASE_URL || '',
@@ -41,5 +56,21 @@ export const env = {
   R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || 'spaisnap',
   R2_PUBLIC_URL_BASE: (process.env.R2_PUBLIC_URL_BASE || 'http://localhost').replace(/\/$/, ''),
   APP_PUBLIC_URL: (process.env.APP_PUBLIC_URL || 'http://localhost:5173').replace(/\/$/, ''),
-  isDev: (process.env.NODE_ENV || 'development') !== 'production',
+  FEATURE_VIDEO_ENABLED: featureVideoEnabled,
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
+  CLOUDINARY_WEBHOOK_SECRET: process.env.CLOUDINARY_WEBHOOK_SECRET || '',
+  CAMPAY_API_KEY: process.env.CAMPAY_API_KEY || '',
+  CAMPAY_WEBHOOK_SECRET: process.env.CAMPAY_WEBHOOK_SECRET || '',
+  CAMPAY_API_URL: (process.env.CAMPAY_API_URL || 'https://api.campay.net/api').replace(/\/$/, ''),
+  SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_EMAIL || '',
+  isDev: nodeEnv !== 'production',
 };
+
+if (env.FEATURE_VIDEO_ENABLED && env.NODE_ENV === 'production') {
+  if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+    console.error('FEATURE_VIDEO_ENABLED requires Cloudinary credentials in production');
+    process.exit(1);
+  }
+}

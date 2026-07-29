@@ -37,6 +37,9 @@ export default function Home() {
               <Link to="/register" className="btn-primary px-6 py-3.5 text-sm">
                 Start an event
               </Link>
+              <Link to="/pricing" className="btn-ghost px-6 py-3.5 text-sm">
+                Pricing
+              </Link>
               <Link to="/login" className="btn-ghost px-6 py-3.5 text-sm">
                 Log in
               </Link>

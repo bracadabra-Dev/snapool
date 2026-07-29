@@ -70,11 +70,13 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
   if (!photo || index < 0) return null;
 
   const caption =
-    photo.type === 'pro'
-      ? 'Pro Shot'
-      : photo.contributorName
-        ? `Shot by ${photo.contributorName}`
-        : 'Guest shot';
+    photo.mediaType === 'video'
+      ? 'Video clip'
+      : photo.type === 'pro'
+        ? 'Pro Shot'
+        : photo.contributorName
+          ? `Shot by ${photo.contributorName}`
+          : 'Guest shot';
 
   return createPortal(
     <div
@@ -173,13 +175,24 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
           touchStartY.current = null;
         }}
       >
-        <img
-          key={photo.id}
-          src={photo.fullUrl}
-          alt=""
-          className="max-h-[90vh] max-w-full select-none rounded-lg object-contain"
-          draggable={false}
-        />
+        {photo.mediaType === 'video' ? (
+          <video
+            key={photo.id}
+            src={photo.fullUrl}
+            poster={photo.thumbUrl}
+            controls
+            playsInline
+            className="max-h-[90vh] max-w-full select-none rounded-lg object-contain"
+          />
+        ) : (
+          <img
+            key={photo.id}
+            src={photo.fullUrl}
+            alt=""
+            className="max-h-[90vh] max-w-full select-none rounded-lg object-contain"
+            draggable={false}
+          />
+        )}
       </div>
 
       <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2 bg-black/70 px-3 py-1.5 text-xs font-medium tracking-wide text-white/90 backdrop-blur-sm">

@@ -9,6 +9,14 @@ import { generateAndStoreQr, generateQrDataUrl } from '../utils/qr';
 import { uploadToR2, deleteFromR2, publicUrlToKey } from '../lib/r2';
 import { env } from '../config/env';
 import { emitPhotoCreated, emitPhotoDeleted } from '../realtime/io';
+import {
+  assertCanCreateEvent,
+  assertEventUpdateAllowed,
+  PlanError,
+  sendPlanError,
+} from '../lib/plans';
+import { getPlatformSettings, getPlanDefinition } from '../lib/platformConfig';
+import { deleteCloudinaryVideo } from '../features/video/cloudinary';
 
 export const upload = multer({
   storage: multer.memoryStorage(),
@@ -32,6 +40,8 @@ const createEventSchema = z.object({
   contributionOpensAt: z.string().datetime().optional().nullable(),
   contributionClosesAt: z.string().datetime().optional().nullable(),
   brandingLogoUrl: z.string().url().optional().nullable(),
+  videoEnabled: z.boolean().optional(),
+  maxVideosPerContributor: z.number().int().min(0).max(100).optional().nullable(),
 });
 
 const updateEventSchema = createEventSchema.partial().extend({
@@ -67,7 +77,15 @@ export async function listEvents(req: AuthedRequest, res: Response, next: NextFu
 
 export async function createEvent(req: AuthedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    await assertCanCreateEvent(req.user!.userId);
     const body = createEventSchema.parse(req.body);
+    const owner = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!owner) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const plan = await getPlanDefinition(owner.plan);
+    const platform = await getPlatformSettings();
     const slug = makeUniqueSlug(body.name);
     const id = randomUUID();
 
@@ -80,16 +98,23 @@ export async function createEvent(req: AuthedRequest, res: Response, next: NextF
         coverImageUrl: body.coverImageUrl ?? null,
         visibility: body.visibility ?? 'unlisted',
         thankYouMessage: body.thankYouMessage ?? null,
-        maxPhotosPerContributor: body.maxPhotosPerContributor ?? 20,
+        maxPhotosPerContributor: Math.min(
+          body.maxPhotosPerContributor ?? platform.defaultMaxPhotosPerContributor,
+          plan.maxPhotosPerContributor
+        ),
         requireContributorName: body.requireContributorName ?? false,
         galleryLive: body.galleryLive ?? true,
         moderationMode: body.moderationMode ?? 'auto',
-        retentionDays: body.retentionDays ?? 7,
+        retentionDays: Math.min(
+          body.retentionDays ?? platform.defaultRetentionDays,
+          plan.maxRetentionDays
+        ),
         contributionOpensAt: body.contributionOpensAt ? new Date(body.contributionOpensAt) : null,
         contributionClosesAt: body.contributionClosesAt
           ? new Date(body.contributionClosesAt)
           : null,
         brandingLogoUrl: body.brandingLogoUrl ?? null,
+        videoEnabled: false,
       },
     });
 
@@ -117,6 +142,10 @@ export async function createEvent(req: AuthedRequest, res: Response, next: NextF
       },
     });
   } catch (err) {
+    if (err instanceof PlanError) {
+      sendPlanError(res, err);
+      return;
+    }
     if (err instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid input', details: err.flatten() });
       return;
@@ -161,6 +190,14 @@ export async function updateEvent(req: AuthedRequest, res: Response, next: NextF
       return;
     }
 
+    const owner = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!owner) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    await assertEventUpdateAllowed(owner, existing, body);
+
     const { password, ...rest } = body;
     const data: Record<string, unknown> = { ...rest };
     if (password === null) data.passwordHash = null;
@@ -186,6 +223,10 @@ export async function updateEvent(req: AuthedRequest, res: Response, next: NextF
 
     res.json({ event: { ...event, publicUrl: eventPublicUrl(event.slug) } });
   } catch (err) {
+    if (err instanceof PlanError) {
+      sendPlanError(res, err);
+      return;
+    }
     if (err instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid input', details: err.flatten() });
       return;
@@ -236,6 +277,7 @@ export async function proUpload(req: AuthedRequest, res: Response, next: NextFun
     const payload = {
       id: photo.id,
       type: photo.type,
+      mediaType: photo.mediaType,
       fullUrl: photo.fullUrl,
       thumbUrl: photo.thumbUrl,
       uploadedAt: photo.uploadedAt.toISOString(),
@@ -261,10 +303,14 @@ export async function deletePhoto(req: AuthedRequest, res: Response, next: NextF
       return;
     }
 
-    const keys = [publicUrlToKey(photo.fullUrl), publicUrlToKey(photo.thumbUrl)].filter(
-      Boolean
-    ) as string[];
-    await Promise.all(keys.map((k) => deleteFromR2(k).catch(() => undefined)));
+    if (photo.mediaType === 'video' && photo.cloudinaryPublicId) {
+      await deleteCloudinaryVideo(photo.cloudinaryPublicId).catch(() => undefined);
+    } else {
+      const keys = [publicUrlToKey(photo.fullUrl), publicUrlToKey(photo.thumbUrl)].filter(
+        Boolean
+      ) as string[];
+      await Promise.all(keys.map((k) => deleteFromR2(k).catch(() => undefined)));
+    }
     await prisma.photo.delete({ where: { id: photo.id } });
     emitPhotoDeleted(photo.event.slug, photo.id);
     res.json({ ok: true });

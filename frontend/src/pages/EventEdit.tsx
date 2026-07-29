@@ -6,14 +6,17 @@ import GalleryGrid from '../components/GalleryGrid';
 import Lightbox from '../components/Lightbox';
 import ProShotUpload from '../components/ProShotUpload';
 import { useEventLiveRoom } from '../hooks/useEventLiveRoom';
+import { useVideoCapabilities } from '../features/video/useVideoCapabilities';
+import VideoCaptureButton from '../features/video/VideoCaptureButton';
 import { upsertPhotos } from '../lib/realtime';
 
 type Tab = 'all' | 'pro' | 'contributor';
 
 export default function EventEdit() {
   const { id } = useParams<{ id: string }>();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [event, setEvent] = useState<EventDetail | null>(null);
+  const { video } = useVideoCapabilities(event?.slug);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -85,6 +88,7 @@ export default function EventEdit() {
         retentionDays: event.retentionDays,
         brandingLogoUrl: event.brandingLogoUrl,
         coverImageUrl: event.coverImageUrl,
+        videoEnabled: event.videoEnabled,
       });
       setEvent((prev) => (prev ? { ...prev, ...res.event, photos: prev.photos } : res.event));
     } catch (err) {
@@ -98,6 +102,21 @@ export default function EventEdit() {
     if (!token || !event) return;
     const res = await api.proUpload(token, event.id, full, thumb);
     onPhotoCreated(res.photo);
+  }
+
+  async function purchaseVideoAddon() {
+    if (!token || !event) return;
+    try {
+      const res = await api.checkout(token, { addOnId: 'video_event_pass', eventId: event.id });
+      if (res.devComplete) {
+        await api.devCompletePayment(token, res.reference);
+        await load();
+      } else if (res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Checkout failed');
+    }
   }
 
   async function onDelete(photoId: string) {
@@ -234,15 +253,53 @@ export default function EventEdit() {
               <option value="manual">Manual approve</option>
             </select>
           </label>
+          {video?.state === 'available' && (
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={event.videoEnabled ?? false}
+                onChange={(e) => setEvent({ ...event, videoEnabled: e.target.checked })}
+              />
+              Allow guest videos
+            </label>
+          )}
         </div>
+        {(user?.plan === 'free' || video?.state === 'plan_required') && (
+          <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)]/60 p-3 text-sm">
+            <p className="font-semibold">Video is a paid feature</p>
+            <p className="mt-1 text-[var(--muted)]">
+              Upgrade to Pro or add the Event Video Pack to unlock guest clips.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link to="/pricing" className="btn-primary px-3 py-2 text-xs">
+                View plans
+              </Link>
+              <button type="button" onClick={() => void purchaseVideoAddon()} className="btn-ghost px-3 py-2 text-xs">
+                Buy video add-on
+              </button>
+            </div>
+          </div>
+        )}
         {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
         <button type="submit" disabled={saving} className="btn-primary px-4 py-2.5 text-sm">
           {saving ? 'Saving…' : 'Save settings'}
         </button>
       </form>
 
-      <div className="mt-5">
+      <div className="mt-5 space-y-3">
         <ProShotUpload onUpload={onProUpload} />
+        {video && token && event && (
+          <VideoCaptureButton
+            slug={event.slug}
+            contributorToken={token}
+            video={video}
+            onSignature={() => api.ownerVideoSignature(token, event.id)}
+            onComplete={async (body) => {
+              const res = await api.ownerVideoComplete(token, event.id, body);
+              onPhotoCreated(res.photo);
+            }}
+          />
+        )}
       </div>
 
       <div className="mt-6">

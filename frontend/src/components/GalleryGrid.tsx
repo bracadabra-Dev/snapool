@@ -61,6 +61,11 @@ export default function GalleryGrid({
                 Pro
               </span>
             )}
+            {photo.mediaType === 'video' && (
+              <span className="absolute inset-0 flex items-center justify-center text-2xl text-white drop-shadow">
+                ▶
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -89,6 +94,11 @@ export default function GalleryGrid({
           {showTypeBadge && photo.type === 'pro' && (
             <span className="absolute left-2 top-2 rounded-lg bg-[var(--pro)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black">
               Pro
+            </span>
+          )}
+          {photo.mediaType === 'video' && (
+            <span className="absolute inset-0 flex items-center justify-center text-3xl text-white drop-shadow">
+              ▶
             </span>
           )}
         </button>
