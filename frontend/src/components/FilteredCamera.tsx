@@ -446,23 +446,16 @@ export default function FilteredCamera({
       <div className="absolute inset-0" onClick={reviewing ? undefined : handleViewfinderTap}>
         {reviewing ? (
           preview.kind === 'video' ? (
-            <div className="relative h-full w-full bg-black">
-              {preview.posterUrl && (
+            <div className="relative z-[1] box-border h-full w-full bg-black pb-32">
+              {preview.posterUrl && previewVideoBroken && (
                 <img
                   src={preview.posterUrl}
                   alt=""
-                  className={`absolute inset-0 h-full w-full object-cover ${previewVideoBroken ? '' : 'opacity-0'}`}
+                  className="absolute inset-0 h-full w-full object-cover opacity-50"
                 />
               )}
               {previewVideoBroken ? (
-                <div className="relative flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center">
-                  {preview.posterUrl && (
-                    <img
-                      src={preview.posterUrl}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover opacity-50"
-                    />
-                  )}
+                <div className="relative flex h-full w-full flex-col items-center justify-center gap-3 px-6 pb-28 text-center">
                   <div className="relative z-10 flex flex-col items-center gap-3">
                     <span className="flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-2xl backdrop-blur-sm">
                       ▶
@@ -482,7 +475,7 @@ export default function FilteredCamera({
                   controls
                   muted
                   preload="auto"
-                  className="relative h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                   onError={() => setPreviewVideoBroken(true)}
                 />
               )}
@@ -515,10 +508,13 @@ export default function FilteredCamera({
           </>
         )}
 
-        {/* Soft vignette + control readability gradients */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.35)_100%)]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/70 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+        {!reviewing && (
+          <>
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.35)_100%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/70 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+          </>
+        )}
 
         {!reviewing && showGrid && (
           <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">

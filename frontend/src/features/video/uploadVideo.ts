@@ -13,6 +13,7 @@ export async function uploadVideoToCloudinary(
   form.append('folder', params.folder);
   form.append('resource_type', 'video');
   form.append('eager', params.eager);
+  if (params.notificationUrl) form.append('notification_url', params.notificationUrl);
   if (params.eagerAsync) form.append('eager_async', 'true');
 
   return new Promise((resolve, reject) => {

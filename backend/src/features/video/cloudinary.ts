@@ -49,12 +49,10 @@ export function signVideoUpload(params: {
   const folder = buildUploadFolder(params.eventId, params.uploadType);
   const eager = EAGER_TRANSFORM_STRING;
 
-  const signParams: Record<string, string | number | boolean> = {
+  const signParams: Record<string, string | number> = {
     timestamp,
     folder,
-    resource_type: 'video',
     eager,
-    eager_async: false,
   };
 
   if (env.APP_PUBLIC_URL && !env.isDev) {
