@@ -59,6 +59,10 @@ export default function CaptureActions({
     if (!file) return;
 
     if (file.type.startsWith('video/')) {
+      if (video?.state === 'maintenance') {
+        setShowMaintenance(true);
+        return;
+      }
       if (!videoAvailable) {
         setPermissionMessage('Video is not available for this event.');
         return;
@@ -93,10 +97,6 @@ export default function CaptureActions({
           type="button"
           disabled={disabled}
           onClick={() => {
-            if (video?.state === 'maintenance') {
-              setShowMaintenance(true);
-              return;
-            }
             setPermissionMessage(null);
             setShowCamera(true);
           }}

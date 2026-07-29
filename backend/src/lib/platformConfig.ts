@@ -181,7 +181,12 @@ export async function getEffectiveLimits(
 
   let video: VideoCapabilities;
 
-  if (!env.FEATURE_VIDEO_ENABLED || !platform.videoEnabled) {
+  if (!env.FEATURE_VIDEO_ENABLED) {
+    video = {
+      state: 'plan_required',
+      message: 'Video uploads are not enabled on this server.',
+    };
+  } else if (!platform.videoEnabled) {
     video = {
       state: 'maintenance',
       message: platform.videoMaintenanceMessage,
