@@ -156,3 +156,45 @@ export function PoolIcon({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+export function ShareIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M8.5 13.5 16 9M16 15l-7.5-4.5M7 8.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM7 19.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function DownloadIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M12 4.5v10M12 14.5l-3.5-3.5M12 14.5l3.5-3.5M5 19.5h14"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

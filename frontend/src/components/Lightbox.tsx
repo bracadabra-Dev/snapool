@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Photo } from '../lib/api';
+import { downloadMedia, shareMedia } from '../lib/mediaActions';
+import { DownloadIcon, ShareIcon } from './icons';
 
 type Props = {
   photos: Photo[];
@@ -14,9 +16,12 @@ const SWIPE_THRESHOLD = 50;
 export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
   const [dragX, setDragX] = useState(0);
   const [animating, setAnimating] = useState(false);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const ignoringVertical = useRef(false);
+  const actionTimer = useRef<number | null>(null);
 
   const index = photo ? photos.findIndex((p) => p.id === photo.id) : -1;
   const hasPrev = index > 0;
@@ -65,7 +70,46 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
   useEffect(() => {
     setDragX(0);
     setAnimating(false);
+    setActionMsg(null);
   }, [photo?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (actionTimer.current != null) window.clearTimeout(actionTimer.current);
+    };
+  }, []);
+
+  function flashAction(message: string) {
+    setActionMsg(message);
+    if (actionTimer.current != null) window.clearTimeout(actionTimer.current);
+    actionTimer.current = window.setTimeout(() => setActionMsg(null), 2200);
+  }
+
+  async function handleShare(e: MouseEvent) {
+    e.stopPropagation();
+    if (!photo) return;
+    try {
+      const result = await shareMedia(photo);
+      flashAction(result === 'shared' ? 'Shared' : 'Link copied');
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      flashAction(err instanceof Error ? err.message : 'Could not share');
+    }
+  }
+
+  async function handleDownload(e: MouseEvent) {
+    e.stopPropagation();
+    if (!photo || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadMedia(photo);
+      flashAction('Download started');
+    } catch {
+      flashAction('Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   if (!photo || index < 0) return null;
 
@@ -195,13 +239,43 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
         )}
       </div>
 
-      <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2 bg-black/70 px-3 py-1.5 text-xs font-medium tracking-wide text-white/90 backdrop-blur-sm">
-        {caption}
-        {photos.length > 1 && (
-          <span className="ml-2 tabular-nums text-white/50">
-            {index + 1}/{photos.length}
-          </span>
+      <div
+        className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {actionMsg && (
+          <p className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-[var(--accent-ink)]">
+            {actionMsg}
+          </p>
         )}
+        <div className="flex items-center gap-2 rounded-full bg-black/70 px-3 py-2 backdrop-blur-sm">
+          <p className="max-w-[42vw] truncate text-xs font-medium tracking-wide text-white/90 sm:max-w-none">
+            {caption}
+            {photos.length > 1 && (
+              <span className="ml-2 tabular-nums text-white/50">
+                {index + 1}/{photos.length}
+              </span>
+            )}
+          </p>
+          <span className="h-4 w-px bg-white/20" aria-hidden="true" />
+          <button
+            type="button"
+            aria-label="Share"
+            onClick={(e) => void handleShare(e)}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:bg-white/15"
+          >
+            <ShareIcon size={17} />
+          </button>
+          <button
+            type="button"
+            aria-label="Download"
+            disabled={downloading}
+            onClick={(e) => void handleDownload(e)}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:bg-white/15 disabled:opacity-50"
+          >
+            <DownloadIcon size={17} />
+          </button>
+        </div>
       </div>
     </div>,
     document.body
