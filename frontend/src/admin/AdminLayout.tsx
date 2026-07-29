@@ -12,8 +12,11 @@ const links = [
 ] as const;
 
 export default function AdminLayout() {
-  const { token, user, logout } = useAuth();
+  const { token, user, authReady, logout } = useAuth();
 
+  if (!authReady) {
+    return <div className="p-8 text-sm text-[var(--muted)]">Checking admin access…</div>;
+  }
   if (!token) return <Navigate to="/login" replace />;
   if (!user?.isSuperAdmin) return <Navigate to="/dashboard" replace />;
 

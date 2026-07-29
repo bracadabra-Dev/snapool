@@ -1,13 +1,22 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { formatVideoSizeLimit } from '../features/video/validateVideo';
 
 type Props = {
-  onChoosePhoto: () => void;
+  videoAvailable?: boolean;
+  maxDurationSec?: number;
+  onChooseMedia: () => void;
   onUseSnap: () => void;
   onClose: () => void;
 };
 
-export default function UploadExplainerSheet({ onChoosePhoto, onUseSnap, onClose }: Props) {
+export default function UploadExplainerSheet({
+  videoAvailable = false,
+  maxDurationSec = 30,
+  onChooseMedia,
+  onUseSnap,
+  onClose,
+}: Props) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -32,18 +41,20 @@ export default function UploadExplainerSheet({ onChoosePhoto, onUseSnap, onClose
       >
         <p className="section-label mb-2 text-[var(--accent)]">Upload</p>
         <h2 id="upload-explain-title" className="font-display text-2xl font-extrabold tracking-tight">
-          Add a photo you already took
+          Add media from your camera roll
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-          Shot in Snapchat or another app? Save it to your camera roll, then choose it here.
+          {videoAvailable
+            ? `Choose a photo or short clip (max ${maxDurationSec}s, ${formatVideoSizeLimit()}). Photos are compressed on your phone before upload; videos go straight to Cloudinary.`
+            : 'Shot in another app? Save it to your camera roll, then choose it here. Photos are compressed on your phone before upload.'}
         </p>
         <div className="mt-5 space-y-2">
           <button
             type="button"
             className="btn-primary min-h-12 w-full py-3.5 text-sm"
-            onClick={onChoosePhoto}
+            onClick={onChooseMedia}
           >
-            Choose photo
+            {videoAvailable ? 'Choose photo or video' : 'Choose photo'}
           </button>
           <button
             type="button"

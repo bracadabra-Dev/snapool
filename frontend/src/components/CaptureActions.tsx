@@ -2,27 +2,37 @@ import { ChangeEvent, useRef, useState } from 'react';
 import FilteredCamera from './FilteredCamera';
 import PermissionSheet from './PermissionSheet';
 import UploadExplainerSheet from './UploadExplainerSheet';
+import VideoMaintenanceSheet from '../features/video/VideoMaintenanceSheet';
+import { VideoCapabilities } from '../lib/api';
 import { CameraIcon, UploadIcon } from './icons';
 
 const UPLOAD_EXPLAINED_KEY = 'spaisnap_upload_explained';
 
 type Props = {
   disabled?: boolean;
-  onFile: (file: File) => void;
+  onPhotoFile: (file: File) => void;
+  onVideoFile?: (file: File) => void;
+  video?: VideoCapabilities | null;
   contributionOpen?: boolean;
   compact?: boolean;
 };
 
 export default function CaptureActions({
   disabled,
-  onFile,
+  onPhotoFile,
+  onVideoFile,
+  video,
   contributionOpen = true,
   compact = false,
 }: Props) {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [showExplainer, setShowExplainer] = useState(false);
+  const [showMaintenance, setShowMaintenance] = useState(false);
   const [permissionMessage, setPermissionMessage] = useState<string | null>(null);
+
+  const videoAvailable = video?.state === 'available' && Boolean(onVideoFile);
+  const acceptTypes = videoAvailable ? 'image/*,video/*' : 'image/*';
 
   function openPicker() {
     galleryInputRef.current?.click();
@@ -45,8 +55,19 @@ export default function CaptureActions({
 
   function handleGalleryChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) onFile(file);
     e.target.value = '';
+    if (!file) return;
+
+    if (file.type.startsWith('video/')) {
+      if (!videoAvailable) {
+        setPermissionMessage('Video is not available for this event.');
+        return;
+      }
+      onVideoFile?.(file);
+      return;
+    }
+
+    onPhotoFile(file);
   }
 
   if (!contributionOpen) {
@@ -62,7 +83,7 @@ export default function CaptureActions({
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/*"
+        accept={acceptTypes}
         className="hidden"
         onChange={handleGalleryChange}
       />
@@ -72,6 +93,10 @@ export default function CaptureActions({
           type="button"
           disabled={disabled}
           onClick={() => {
+            if (video?.state === 'maintenance') {
+              setShowMaintenance(true);
+              return;
+            }
             setPermissionMessage(null);
             setShowCamera(true);
           }}
@@ -93,7 +118,9 @@ export default function CaptureActions({
 
       {showExplainer && (
         <UploadExplainerSheet
-          onChoosePhoto={markExplainedAndPick}
+          videoAvailable={videoAvailable}
+          maxDurationSec={video?.maxDurationSec}
+          onChooseMedia={markExplainedAndPick}
           onUseSnap={() => {
             localStorage.setItem(UPLOAD_EXPLAINED_KEY, '1');
             setShowExplainer(false);
@@ -115,12 +142,26 @@ export default function CaptureActions({
         />
       )}
 
+      {showMaintenance && (
+        <VideoMaintenanceSheet message={video?.message} onClose={() => setShowMaintenance(false)} />
+      )}
+
       {showCamera && (
         <FilteredCamera
+          videoEnabled={videoAvailable}
+          maxDurationSec={video?.maxDurationSec ?? 30}
           onCapture={(file) => {
             setShowCamera(false);
-            onFile(file);
+            onPhotoFile(file);
           }}
+          onVideoCapture={
+            videoAvailable
+              ? (file) => {
+                  setShowCamera(false);
+                  onVideoFile?.(file);
+                }
+              : undefined
+          }
           onClose={() => setShowCamera(false)}
           onError={(message) => {
             setShowCamera(false);

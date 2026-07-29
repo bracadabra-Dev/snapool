@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 import { api, ApiError, Photo, PublicEvent } from '../lib/api';
 import { compressForUpload } from '../lib/compress';
 import CaptureActions from '../components/CaptureActions';
-import VideoCaptureButton from '../features/video/VideoCaptureButton';
 import { useVideoCapabilities } from '../features/video/useVideoCapabilities';
+import { runVideoUpload } from '../features/video/runVideoUpload';
 import GalleryGrid from '../components/GalleryGrid';
 import Lightbox from '../components/Lightbox';
 import ThankChip from '../components/ThankChip';
@@ -132,6 +132,50 @@ export default function ContributorPage() {
     addLocalPhoto(photo);
     pulseHighlight(photo.id);
     setTimeout(() => setShowThanks(false), 4000);
+  }
+
+  async function onVideoFile(file: File) {
+    if (!event?.contributionOpen) {
+      setError('Contribution is closed for this event');
+      return;
+    }
+    if (video?.state === 'maintenance') {
+      setError(video.message || 'Video uploads are temporarily unavailable');
+      return;
+    }
+    if (video?.state !== 'available') {
+      setError('Video is not available for this event');
+      return;
+    }
+
+    setError(null);
+    setShowThanks(false);
+    setStatus('Preparing video…');
+    setProgress(5);
+
+    try {
+      const session = await ensureSession(event.requireContributorName && !tokenRef.current ? name : undefined);
+      setProgress(10);
+      setStatus('Uploading video…');
+
+      await runVideoUpload(
+        file,
+        () => api.contributorVideoSignature(slug, session),
+        async (body) => {
+          const activeSession = tokenRef.current || session;
+          const res = await api.contributorVideoComplete(slug, activeSession, body);
+          await finishUpload(res.photo);
+        },
+        (pct) => {
+          setProgress(10 + Math.round(pct * 0.85));
+          setStatus(`Uploading video ${pct}%`);
+        }
+      );
+    } catch (err) {
+      setStatus(null);
+      setProgress(0);
+      setError(err instanceof Error ? err.message : 'Video upload failed');
+    }
   }
 
   async function onFile(file: File) {
@@ -313,25 +357,10 @@ export default function ContributorPage() {
                 compact
                 disabled={!!status}
                 contributionOpen={event.contributionOpen}
-                onFile={(file) => void onFile(file)}
+                video={video}
+                onPhotoFile={(file) => void onFile(file)}
+                onVideoFile={(file) => void onVideoFile(file)}
               />
-              {video && token && (
-                <VideoCaptureButton
-                  slug={slug}
-                  contributorToken={token}
-                  video={video}
-                  disabled={!!status}
-                  onSignature={async () => {
-                    const session = await ensureSession();
-                    return api.contributorVideoSignature(slug, session);
-                  }}
-                  onComplete={async (body) => {
-                    const session = tokenRef.current || (await ensureSession());
-                    const res = await api.contributorVideoComplete(slug, session, body);
-                    await finishUpload(res.photo);
-                  }}
-                />
-              )}
               {status && (
                 <div className="mt-2 px-1">
                   <div className="mb-1 flex justify-between text-[11px] text-[var(--muted)]">

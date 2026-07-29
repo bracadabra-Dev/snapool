@@ -12,9 +12,31 @@ type Props = {
   onCapture: (file: File) => void;
   onClose: () => void;
   onError: (message: string) => void;
+  videoEnabled?: boolean;
+  maxDurationSec?: number;
+  onVideoCapture?: (file: File) => void;
 };
 
-export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
+type PreviewState = { file: File; url: string; kind: 'photo' | 'video' };
+
+function pickRecorderMime(): string {
+  const types = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+    'video/mp4',
+  ];
+  return types.find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) || '';
+}
+
+export default function FilteredCamera({
+  onCapture,
+  onClose,
+  onError,
+  videoEnabled = false,
+  maxDurationSec = 30,
+  onVideoCapture,
+}: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
@@ -33,7 +55,13 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
   const [canFlip, setCanFlip] = useState(false);
   const [filterLabelVisible, setFilterLabelVisible] = useState(false);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
-  const [preview, setPreview] = useState<{ file: File; url: string } | null>(null);
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [mode, setMode] = useState<'photo' | 'video'>('photo');
+  const [recording, setRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordTimerRef = useRef<number | null>(null);
   const focusTimer = useRef<number | null>(null);
   const labelTimer = useRef<number | null>(null);
   const reviewing = preview !== null;
@@ -107,6 +135,8 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
     return () => {
       if (focusTimer.current) window.clearTimeout(focusTimer.current);
       if (labelTimer.current) window.clearTimeout(labelTimer.current);
+      if (recordTimerRef.current) window.clearInterval(recordTimerRef.current);
+      recorderRef.current?.stop();
     };
   }, []);
 
@@ -135,6 +165,94 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
     setPreview(null);
   }
 
+  function stopRecordingTimer() {
+    if (recordTimerRef.current) {
+      window.clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+  }
+
+  function stopActiveRecording() {
+    stopRecordingTimer();
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
+    }
+  }
+
+  async function finalizeRecording() {
+    const mime = recorderRef.current?.mimeType || 'video/webm';
+    const blob = new Blob(chunksRef.current, { type: mime });
+    chunksRef.current = [];
+    recorderRef.current = null;
+    setRecording(false);
+    setRecordSeconds(0);
+
+    if (!blob.size) {
+      onError('Recording failed — try again');
+      return;
+    }
+
+    const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+    const file = new File([blob], `clip-${Date.now()}.${ext}`, { type: mime });
+    stopStream();
+    setReady(false);
+    setTorchOn(false);
+    setPreview({ file, url: URL.createObjectURL(blob), kind: 'video' });
+  }
+
+  function startRecording() {
+    const stream = streamRef.current;
+    if (!stream || !ready || recording || reviewing) return;
+
+    const mime = pickRecorderMime();
+    if (!mime) {
+      onError('Video recording is not supported on this device. Upload a clip from your gallery instead.');
+      return;
+    }
+
+    chunksRef.current = [];
+    const recorder = new MediaRecorder(stream, {
+      mimeType: mime,
+      videoBitsPerSecond: 2_500_000,
+    });
+    recorderRef.current = recorder;
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
+    recorder.onstop = () => {
+      void finalizeRecording();
+    };
+    recorder.onerror = () => {
+      setRecording(false);
+      stopRecordingTimer();
+      onError('Recording failed — try again');
+    };
+
+    recorder.start(250);
+    setRecording(true);
+    setRecordSeconds(0);
+    stopRecordingTimer();
+    recordTimerRef.current = window.setInterval(() => {
+      setRecordSeconds((prev) => {
+        const next = prev + 1;
+        if (next >= maxDurationSec) {
+          stopActiveRecording();
+        }
+        return next;
+      });
+    }, 1000);
+  }
+
+  function handleVideoShutter() {
+    if (recording) {
+      stopActiveRecording();
+      return;
+    }
+    startRecording();
+  }
+
   async function handleShutter() {
     const video = videoRef.current;
     if (!video || !ready || capturing || reviewing) return;
@@ -154,7 +272,7 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
       setTorchOn(false);
       setFlash(false);
       setCapturing(false);
-      setPreview({ file, url: URL.createObjectURL(file) });
+      setPreview({ file, url: URL.createObjectURL(file), kind: 'photo' });
     } catch (err) {
       setFlash(false);
       setCapturing(false);
@@ -163,6 +281,7 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
   }
 
   function handleRetake() {
+    stopActiveRecording();
     clearPreview();
     setCapturing(false);
     setFlash(false);
@@ -173,21 +292,23 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
 
   function handleApprove() {
     if (!preview) return;
-    const file = preview.file;
+    const { file, kind } = preview;
     URL.revokeObjectURL(preview.url);
     setPreview(null);
     stopStream();
-    onCapture(file);
+    if (kind === 'video') onVideoCapture?.(file);
+    else onCapture(file);
   }
 
   function handleClose() {
+    stopActiveRecording();
     clearPreview();
     stopStream();
     onClose();
   }
 
   function handleFlip() {
-    if (reviewing) return;
+    if (reviewing || recording) return;
     stopStream();
     setReady(false);
     setTorchOn(false);
@@ -226,16 +347,28 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
 
   const activeFilter = FILTER_PRESETS.find((f) => f.id === filterId);
 
+  const showVideoMode = videoEnabled && Boolean(onVideoCapture);
+  const isVideoMode = showVideoMode && mode === 'video';
+
   return createPortal(
     <div className="fixed inset-0 z-[110] bg-black text-white">
       {/* Full-bleed viewfinder / review */}
       <div className="absolute inset-0" onClick={reviewing ? undefined : handleViewfinderTap}>
         {reviewing ? (
-          <img
-            src={preview.url}
-            alt="Snap preview"
-            className="h-full w-full object-cover"
-          />
+          preview.kind === 'video' ? (
+            <video
+              src={preview.url}
+              playsInline
+              controls
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <img
+              src={preview.url}
+              alt="Snap preview"
+              className="h-full w-full object-cover"
+            />
+          )
         ) : (
           <video
             ref={videoRef}
@@ -245,7 +378,7 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
             className={`h-full w-full object-cover transition-[filter] duration-300 ${
               facingMode === 'user' ? 'scale-x-[-1]' : ''
             }`}
-            style={{ filter: getFilterCss(filterId) }}
+            style={{ filter: isVideoMode ? undefined : getFilterCss(filterId) }}
           />
         )}
 
@@ -297,7 +430,7 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
 
         {reviewing ? (
           <p className="rounded-full bg-black/45 px-3 py-1.5 text-xs font-semibold tracking-wide text-white/85 backdrop-blur-md">
-            Looks good?
+            {preview.kind === 'video' ? 'Use this clip?' : 'Looks good?'}
           </p>
         ) : (
           <div className="flex items-center gap-2">
@@ -338,7 +471,14 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
       </div>
 
       {/* Filter name toast */}
-      {!reviewing && (
+      {!reviewing && recording && (
+        <div className="pointer-events-none absolute left-1/2 top-[18%] z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-red-600/90 px-4 py-1.5 text-sm font-semibold backdrop-blur-md">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+          REC {recordSeconds}s / {maxDurationSec}s
+        </div>
+      )}
+
+      {!reviewing && !recording && !isVideoMode && (
         <div
           className={`pointer-events-none absolute left-1/2 top-[22%] z-10 -translate-x-1/2 rounded-full bg-black/45 px-4 py-1.5 text-sm font-medium tracking-wide backdrop-blur-md transition-all duration-300 ${
             filterLabelVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
@@ -370,73 +510,112 @@ export default function FilteredCamera({ onCapture, onClose, onError }: Props) {
               <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] shadow-[0_0_28px_rgba(214,255,60,0.35)]">
                 <CheckIcon />
               </span>
-              <span className="text-xs font-semibold tracking-wide text-white">Use photo</span>
+              <span className="text-xs font-semibold tracking-wide text-white">
+                {preview.kind === 'video' ? 'Use clip' : 'Use photo'}
+              </span>
             </button>
           </div>
         ) : (
           <>
-            {/* Instagram-style filter rings */}
-            <div className="mb-5 -mx-1 flex gap-3 overflow-x-auto px-2 pb-1 scrollbar-none">
-              {FILTER_PRESETS.map((preset) => {
-                const active = filterId === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      selectFilter(preset.id);
-                    }}
-                    className="flex shrink-0 flex-col items-center gap-1.5"
-                  >
-                    <span
-                      className={`rounded-full p-[2px] transition-transform duration-200 ${
-                        active
-                          ? 'scale-110 bg-gradient-to-br from-white via-cyan-200 to-amber-200'
-                          : 'bg-white/25'
+            {showVideoMode && (
+              <div className="mb-4 flex justify-center">
+                <div className="inline-flex rounded-full bg-black/45 p-1 backdrop-blur-md">
+                  {(['photo', 'video'] as const).map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setMode(id)}
+                      className={`rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition ${
+                        mode === id ? 'bg-white text-black' : 'text-white/70'
                       }`}
+                    >
+                      {id}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!isVideoMode && (
+              <div className="mb-5 -mx-1 flex gap-3 overflow-x-auto px-2 pb-1 scrollbar-none">
+                {FILTER_PRESETS.map((preset) => {
+                  const active = filterId === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        selectFilter(preset.id);
+                      }}
+                      className="flex shrink-0 flex-col items-center gap-1.5"
                     >
                       <span
-                        className="block h-12 w-12 rounded-full border-2 border-black/40 shadow-lg"
-                        style={{ background: FILTER_SWATCH[preset.id] }}
-                      />
-                    </span>
-                    <span
-                      className={`text-[11px] font-medium ${
-                        active ? 'text-white' : 'text-white/55'
-                      }`}
-                    >
-                      {preset.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+                        className={`rounded-full p-[2px] transition-transform duration-200 ${
+                          active
+                            ? 'scale-110 bg-gradient-to-br from-white via-cyan-200 to-amber-200'
+                            : 'bg-white/25'
+                        }`}
+                      >
+                        <span
+                          className="block h-12 w-12 rounded-full border-2 border-black/40 shadow-lg"
+                          style={{ background: FILTER_SWATCH[preset.id] }}
+                        />
+                      </span>
+                      <span
+                        className={`text-[11px] font-medium ${
+                          active ? 'text-white' : 'text-white/55'
+                        }`}
+                      >
+                        {preset.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {isVideoMode && (
+              <p className="mb-4 text-center text-xs text-white/55">
+                Tap to record · max {maxDurationSec}s · uploads go straight to Cloudinary
+              </p>
+            )}
 
             {/* Shutter row */}
             <div className="relative flex items-center justify-center">
               <button
                 type="button"
                 disabled={!ready || capturing}
-                aria-label="Take photo"
+                aria-label={isVideoMode ? (recording ? 'Stop recording' : 'Start recording') : 'Take photo'}
                 onClick={(e) => {
                   e.stopPropagation();
-                  void handleShutter();
+                  if (isVideoMode) handleVideoShutter();
+                  else void handleShutter();
                 }}
                 className="group relative flex h-[76px] w-[76px] items-center justify-center rounded-full disabled:opacity-40"
               >
-                <span className="absolute inset-0 rounded-full border-[3px] border-white/90" />
                 <span
-                  className={`h-[60px] w-[60px] rounded-full bg-white shadow-[0_0_30px_rgba(255,255,255,0.25)] transition-transform duration-150 ${
-                    capturing ? 'scale-90' : 'group-active:scale-90'
+                  className={`absolute inset-0 rounded-full border-[3px] ${
+                    isVideoMode ? 'border-red-400/90' : 'border-white/90'
+                  }`}
+                />
+                <span
+                  className={`rounded-full transition-transform duration-150 ${
+                    isVideoMode
+                      ? recording
+                        ? 'h-[28px] w-[28px] rounded-md bg-red-500'
+                        : 'h-[60px] w-[60px] bg-red-500'
+                      : `h-[60px] w-[60px] bg-white shadow-[0_0_30px_rgba(255,255,255,0.25)] ${
+                          capturing ? 'scale-90' : 'group-active:scale-90'
+                        }`
                   }`}
                 />
               </button>
 
               <div className="absolute right-6 text-right">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Lens</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Mode</p>
                 <p className="text-xs font-medium text-white/80">
-                  {facingMode === 'environment' ? 'Rear' : 'Front'}
+                  {isVideoMode ? 'Video' : facingMode === 'environment' ? 'Photo · Rear' : 'Photo · Front'}
                 </p>
               </div>
             </div>

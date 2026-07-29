@@ -7,7 +7,6 @@ import Lightbox from '../components/Lightbox';
 import ProShotUpload from '../components/ProShotUpload';
 import { useEventLiveRoom } from '../hooks/useEventLiveRoom';
 import { useVideoCapabilities } from '../features/video/useVideoCapabilities';
-import VideoCaptureButton from '../features/video/VideoCaptureButton';
 import { upsertPhotos } from '../lib/realtime';
 
 type Tab = 'all' | 'pro' | 'contributor';
@@ -287,19 +286,15 @@ export default function EventEdit() {
       </form>
 
       <div className="mt-5 space-y-3">
-        <ProShotUpload onUpload={onProUpload} />
-        {video && token && event && (
-          <VideoCaptureButton
-            slug={event.slug}
-            contributorToken={token}
-            video={video}
-            onSignature={() => api.ownerVideoSignature(token, event.id)}
-            onComplete={async (body) => {
-              const res = await api.ownerVideoComplete(token, event.id, body);
-              onPhotoCreated(res.photo);
-            }}
-          />
-        )}
+        <ProShotUpload
+          onPhotoUpload={onProUpload}
+          video={video}
+          getVideoSignature={() => api.ownerVideoSignature(token!, event!.id)}
+          onVideoComplete={async (body) => {
+            const res = await api.ownerVideoComplete(token!, event!.id, body);
+            onPhotoCreated(res.photo);
+          }}
+        />
       </div>
 
       <div className="mt-6">

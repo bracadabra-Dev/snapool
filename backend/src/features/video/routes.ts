@@ -147,11 +147,22 @@ export async function contributorVideoComplete(
       return;
     }
 
-    await assertVideoUploadAllowed(event.owner, event, req.contributor!.contributorId);
+    const { maxDurationSec } = await assertVideoUploadAllowed(
+      event.owner,
+      event,
+      req.contributor!.contributorId
+    );
 
     const body = req.body as CompleteBody;
     if (!body.publicId || !body.fullUrl || !body.thumbUrl) {
       res.status(400).json({ error: 'publicId, fullUrl, and thumbUrl are required' });
+      return;
+    }
+    if (body.duration != null && body.duration > maxDurationSec) {
+      res.status(400).json({
+        error: `Video must be ${maxDurationSec}s or shorter`,
+        code: 'VIDEO_TOO_LONG',
+      });
       return;
     }
 
@@ -186,11 +197,18 @@ export async function ownerVideoComplete(
       return;
     }
 
-    await assertVideoUploadAllowed(event.owner, event);
+    const { maxDurationSec } = await assertVideoUploadAllowed(event.owner, event);
 
     const body = req.body as CompleteBody;
     if (!body.publicId || !body.fullUrl || !body.thumbUrl) {
       res.status(400).json({ error: 'publicId, fullUrl, and thumbUrl are required' });
+      return;
+    }
+    if (body.duration != null && body.duration > maxDurationSec) {
+      res.status(400).json({
+        error: `Video must be ${maxDurationSec}s or shorter`,
+        code: 'VIDEO_TOO_LONG',
+      });
       return;
     }
 

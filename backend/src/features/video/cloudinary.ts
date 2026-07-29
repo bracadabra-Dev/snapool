@@ -53,7 +53,7 @@ export function signVideoUpload(params: {
     folder,
     resource_type: 'video',
     eager,
-    eager_async: true,
+    eager_async: false,
   };
 
   if (env.APP_PUBLIC_URL && !env.isDev) {
@@ -69,7 +69,7 @@ export function signVideoUpload(params: {
     signature,
     folder,
     eager,
-    eagerAsync: true,
+    eagerAsync: false,
     notificationUrl:
       typeof signParams.notification_url === 'string' ? signParams.notification_url : undefined,
   };

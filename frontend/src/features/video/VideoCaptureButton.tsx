@@ -1,11 +1,9 @@
 import { ChangeEvent, useRef, useState } from 'react';
 import { VideoCapabilities } from '../../lib/api';
-import { uploadVideoToCloudinary, parseCloudinaryUploadResult } from './uploadVideo';
+import { runVideoUpload } from './runVideoUpload';
 import VideoMaintenanceSheet from './VideoMaintenanceSheet';
 
 type Props = {
-  slug: string;
-  contributorToken: string;
   video: VideoCapabilities;
   disabled?: boolean;
   onSignature: () => Promise<{ upload: import('../../lib/api').VideoUploadParams; maxDurationSec: number }>;
@@ -13,6 +11,7 @@ type Props = {
   onUploaded?: () => void;
 };
 
+/** Standalone video picker — prefer CaptureActions / ProShotUpload unified flows. */
 export default function VideoCaptureButton({
   video,
   disabled,
@@ -33,23 +32,13 @@ export default function VideoCaptureButton({
   async function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !file.type.startsWith('video/')) {
-      setError('Please choose a video file');
-      return;
-    }
+    if (!file) return;
+
     setBusy(true);
     setError(null);
     setProgress(0);
     try {
-      const { upload, maxDurationSec } = await onSignature();
-      const result = await uploadVideoToCloudinary(file, upload, setProgress);
-      const duration = typeof result.duration === 'number' ? Math.round(result.duration as number) : undefined;
-      if (duration != null && duration > maxDurationSec) {
-        setError(`Video must be ${maxDurationSec}s or shorter`);
-        return;
-      }
-      const parsed = parseCloudinaryUploadResult(result);
-      await onComplete(parsed);
+      await runVideoUpload(file, onSignature, onComplete, setProgress);
       onUploaded?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Video upload failed');
