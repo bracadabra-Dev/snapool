@@ -20,10 +20,11 @@ export function isCloudinaryReady(): boolean {
   return Boolean(env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET);
 }
 
-const EAGER_TRANSFORMS = [
-  { width: 1280, crop: 'limit', quality: 'auto', fetch_format: 'mp4' },
-  { format: 'jpg', transformation: [{ width: 400, crop: 'fill', gravity: 'auto' }] },
-];
+/** Pipe-separated eager transforms for signed browser uploads. */
+export const EAGER_TRANSFORM_STRING = 'w_1280,c_limit,q_auto,f_mp4|w_400,c_fill,g_auto,f_jpg';
+
+/** @deprecated Use EAGER_TRANSFORM_STRING — kept for exports/tests */
+const EAGER_TRANSFORMS = EAGER_TRANSFORM_STRING;
 
 export function buildUploadFolder(eventId: string, type: 'contributor' | 'pro'): string {
   return `spaisnap/events/${eventId}/${type}`;
@@ -46,7 +47,7 @@ export function signVideoUpload(params: {
   ensureCloudinaryConfigured();
   const timestamp = Math.round(Date.now() / 1000);
   const folder = buildUploadFolder(params.eventId, params.uploadType);
-  const eager = JSON.stringify(EAGER_TRANSFORMS);
+  const eager = EAGER_TRANSFORM_STRING;
 
   const signParams: Record<string, string | number | boolean> = {
     timestamp,

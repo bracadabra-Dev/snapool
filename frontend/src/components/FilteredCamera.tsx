@@ -8,7 +8,7 @@ import {
   drawFilteredVideoFrame,
   getFilterCss,
 } from '../lib/filters';
-import { canPlayVideoMime, tagRecordedVideoDuration } from '../features/video/validateVideo';
+import { tagRecordedVideoDuration } from '../features/video/validateVideo';
 
 type Props = {
   onCapture: (file: File) => void;
@@ -19,7 +19,13 @@ type Props = {
   onVideoCapture?: (file: File) => void;
 };
 
-type PreviewState = { file: File; url: string; kind: 'photo' | 'video'; durationSec?: number };
+type PreviewState = {
+  file: File;
+  url: string;
+  kind: 'photo' | 'video';
+  durationSec?: number;
+  posterUrl?: string;
+};
 
 function pickRecorderMime(): string {
   const types = [
@@ -61,6 +67,7 @@ export default function FilteredCamera({
   const [canFlip, setCanFlip] = useState(false);
   const [filterLabelVisible, setFilterLabelVisible] = useState(false);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [previewVideoBroken, setPreviewVideoBroken] = useState(false);
   const recordingStartedAtRef = useRef<number | null>(null);
@@ -191,10 +198,19 @@ export default function FilteredCamera({
   }, [isVideoMode, ready, reviewing, filterId, facingMode, lensKey]);
 
   useEffect(() => {
+    if (preview?.kind !== 'video' || previewVideoBroken) return;
+    const el = previewVideoRef.current;
+    if (!el) return;
+    el.load();
+    void el.play().catch(() => setPreviewVideoBroken(true));
+  }, [preview?.url, preview?.kind, previewVideoBroken]);
+
+  useEffect(() => {
+    const url = preview?.url;
     return () => {
-      if (preview) URL.revokeObjectURL(preview.url);
+      if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
     };
-  }, [preview]);
+  }, [preview?.url]);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -252,11 +268,20 @@ export default function FilteredCamera({
     const ext = mime.includes('mp4') ? 'mp4' : 'webm';
     const file = new File([blob], `clip-${Date.now()}.${ext}`, { type: mime });
     tagRecordedVideoDuration(file, durationSec);
+
+    let posterUrl: string | undefined;
+    const canvas = filterCanvasRef.current;
+    const video = videoRef.current;
+    if (canvas && video) {
+      drawFilteredVideoFrame(video, canvas, filterId, facingMode === 'user');
+      posterUrl = canvas.toDataURL('image/jpeg', 0.82);
+    }
+
     stopStream();
     setReady(false);
     setTorchOn(false);
-    setPreviewVideoBroken(!canPlayVideoMime(mime));
-    setPreview({ file, url: URL.createObjectURL(blob), kind: 'video', durationSec });
+    setPreviewVideoBroken(false);
+    setPreview({ file, url: URL.createObjectURL(blob), kind: 'video', durationSec, posterUrl });
   }
 
   function startRecording() {
@@ -421,25 +446,47 @@ export default function FilteredCamera({
       <div className="absolute inset-0" onClick={reviewing ? undefined : handleViewfinderTap}>
         {reviewing ? (
           preview.kind === 'video' ? (
-            previewVideoBroken ? (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-black px-6 text-center">
-                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-2xl">▶</span>
-                <p className="text-lg font-semibold">Clip ready</p>
-                <p className="text-sm text-white/60">
-                  {(preview.durationSec ?? 0) > 0 ? `${preview.durationSec}s clip` : 'Short clip'} — preview not supported on this device, but upload will work.
-                </p>
-              </div>
-            ) : (
-              <video
-                key={preview.url}
-                src={preview.url}
-                playsInline
-                controls
-                muted
-                className="h-full w-full object-cover"
-                onError={() => setPreviewVideoBroken(true)}
-              />
-            )
+            <div className="relative h-full w-full bg-black">
+              {preview.posterUrl && (
+                <img
+                  src={preview.posterUrl}
+                  alt=""
+                  className={`absolute inset-0 h-full w-full object-cover ${previewVideoBroken ? '' : 'opacity-0'}`}
+                />
+              )}
+              {previewVideoBroken ? (
+                <div className="relative flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center">
+                  {preview.posterUrl && (
+                    <img
+                      src={preview.posterUrl}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover opacity-50"
+                    />
+                  )}
+                  <div className="relative z-10 flex flex-col items-center gap-3">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-2xl backdrop-blur-sm">
+                      ▶
+                    </span>
+                    <p className="text-lg font-semibold">Clip ready</p>
+                    <p className="text-sm text-white/80">
+                      {(preview.durationSec ?? 0) > 0 ? `${preview.durationSec}s clip` : 'Short clip'} — tap Use clip to upload.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <video
+                  ref={previewVideoRef}
+                  key={preview.url}
+                  src={preview.url}
+                  playsInline
+                  controls
+                  muted
+                  preload="auto"
+                  className="relative h-full w-full object-cover"
+                  onError={() => setPreviewVideoBroken(true)}
+                />
+              )}
+            </div>
           ) : (
             <img
               src={preview.url}
