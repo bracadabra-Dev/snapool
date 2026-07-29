@@ -9,6 +9,7 @@ import { requireSuperAdmin } from './middleware/requireSuperAdmin';
 import { uploadRateLimit, videoSignatureRateLimit } from './middleware/rateLimit';
 import { initRealtime } from './realtime/io';
 import { bootstrapSuperAdmin } from './lib/adminAudit';
+import { getPlatformSettings } from './lib/platformConfig';
 import * as auth from './routes/auth';
 import * as events from './routes/events';
 import * as publicRoutes from './routes/public';
@@ -141,6 +142,17 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 initRealtime(server);
 
 void bootstrapSuperAdmin(env.SUPER_ADMIN_EMAIL);
+
+void getPlatformSettings().then((platform) => {
+  if (env.FEATURE_VIDEO_ENABLED && !platform.videoEnabled) {
+    console.warn(
+      'FEATURE_VIDEO_ENABLED is on but platform video is off — enable video at /admin to show the camera video mode'
+    );
+  }
+  if (env.featureVideoRequested && env.NODE_ENV === 'production' && !env.FEATURE_VIDEO_ENABLED) {
+    console.warn('FEATURE_VIDEO_ENABLED requested but Cloudinary credentials are incomplete — video disabled');
+  }
+});
 
 server.listen(env.PORT, () => {
   console.log(`SnapPool API listening on port ${env.PORT}`);

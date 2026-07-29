@@ -252,7 +252,7 @@ export default function EventEdit() {
               <option value="manual">Manual approve</option>
             </select>
           </label>
-          {video?.state === 'available' && (
+          {(video?.state === 'available' || video?.state === 'disabled_by_owner') && (
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"

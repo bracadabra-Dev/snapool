@@ -29,7 +29,7 @@ services:
       - key: APP_PUBLIC_URL
         sync: false
       - key: FEATURE_VIDEO_ENABLED
-        value: "false"
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

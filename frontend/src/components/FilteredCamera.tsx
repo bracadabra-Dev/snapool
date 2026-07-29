@@ -5,8 +5,10 @@ import {
   FILTER_SWATCH,
   FilterId,
   captureFilteredFrame,
+  drawFilteredVideoFrame,
   getFilterCss,
 } from '../lib/filters';
+import { canPlayVideoMime, tagRecordedVideoDuration } from '../features/video/validateVideo';
 
 type Props = {
   onCapture: (file: File) => void;
@@ -17,14 +19,16 @@ type Props = {
   onVideoCapture?: (file: File) => void;
 };
 
-type PreviewState = { file: File; url: string; kind: 'photo' | 'video' };
+type PreviewState = { file: File; url: string; kind: 'photo' | 'video'; durationSec?: number };
 
 function pickRecorderMime(): string {
   const types = [
+    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/mp4;codecs=avc1',
+    'video/mp4',
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
     'video/webm',
-    'video/mp4',
   ];
   return types.find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) || '';
 }
@@ -38,8 +42,10 @@ export default function FilteredCamera({
   onVideoCapture,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const filterCanvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
+  const drawLoopRef = useRef<number | null>(null);
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
 
@@ -56,6 +62,8 @@ export default function FilteredCamera({
   const [filterLabelVisible, setFilterLabelVisible] = useState(false);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [previewVideoBroken, setPreviewVideoBroken] = useState(false);
+  const recordingStartedAtRef = useRef<number | null>(null);
   const [mode, setMode] = useState<'photo' | 'video'>('photo');
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -65,6 +73,12 @@ export default function FilteredCamera({
   const focusTimer = useRef<number | null>(null);
   const labelTimer = useRef<number | null>(null);
   const reviewing = preview !== null;
+  const showVideoMode = videoEnabled && Boolean(onVideoCapture);
+  const isVideoMode = showVideoMode && mode === 'video';
+  const filterIdRef = useRef<FilterId>(filterId);
+  const facingModeRef = useRef(facingMode);
+  filterIdRef.current = filterId;
+  facingModeRef.current = facingMode;
 
   useEffect(() => {
     let cancelled = false;
@@ -136,9 +150,45 @@ export default function FilteredCamera({
       if (focusTimer.current) window.clearTimeout(focusTimer.current);
       if (labelTimer.current) window.clearTimeout(labelTimer.current);
       if (recordTimerRef.current) window.clearInterval(recordTimerRef.current);
+      if (drawLoopRef.current) window.cancelAnimationFrame(drawLoopRef.current);
       recorderRef.current?.stop();
     };
   }, []);
+
+  function stopFilterDrawLoop() {
+    if (drawLoopRef.current != null) {
+      window.cancelAnimationFrame(drawLoopRef.current);
+      drawLoopRef.current = null;
+    }
+  }
+
+  function runFilterDrawLoop() {
+    const canvas = filterCanvasRef.current;
+    const video = videoRef.current;
+    if (!canvas || !video) return;
+
+    const tick = () => {
+      drawFilteredVideoFrame(
+        video,
+        canvas,
+        filterIdRef.current,
+        facingModeRef.current === 'user'
+      );
+      drawLoopRef.current = window.requestAnimationFrame(tick);
+    };
+
+    stopFilterDrawLoop();
+    tick();
+  }
+
+  useEffect(() => {
+    if (!isVideoMode || !ready || reviewing) {
+      stopFilterDrawLoop();
+      return;
+    }
+    runFilterDrawLoop();
+    return () => stopFilterDrawLoop();
+  }, [isVideoMode, ready, reviewing, filterId, facingMode, lensKey]);
 
   useEffect(() => {
     return () => {
@@ -186,6 +236,12 @@ export default function FilteredCamera({
     chunksRef.current = [];
     recorderRef.current = null;
     setRecording(false);
+
+    const elapsedMs = recordingStartedAtRef.current
+      ? Date.now() - recordingStartedAtRef.current
+      : recordSeconds * 1000;
+    recordingStartedAtRef.current = null;
+    const durationSec = Math.max(1, Math.min(maxDurationSec, Math.ceil(elapsedMs / 1000)));
     setRecordSeconds(0);
 
     if (!blob.size) {
@@ -195,15 +251,23 @@ export default function FilteredCamera({
 
     const ext = mime.includes('mp4') ? 'mp4' : 'webm';
     const file = new File([blob], `clip-${Date.now()}.${ext}`, { type: mime });
+    tagRecordedVideoDuration(file, durationSec);
     stopStream();
     setReady(false);
     setTorchOn(false);
-    setPreview({ file, url: URL.createObjectURL(blob), kind: 'video' });
+    setPreviewVideoBroken(!canPlayVideoMime(mime));
+    setPreview({ file, url: URL.createObjectURL(blob), kind: 'video', durationSec });
   }
 
   function startRecording() {
-    const stream = streamRef.current;
-    if (!stream || !ready || recording || reviewing) return;
+    const canvas = filterCanvasRef.current;
+    const video = videoRef.current;
+    if (!canvas || !video || !ready || recording || reviewing) return;
+
+    if (!drawFilteredVideoFrame(video, canvas, filterId, facingMode === 'user')) {
+      onError('Camera not ready — try again');
+      return;
+    }
 
     const mime = pickRecorderMime();
     if (!mime) {
@@ -211,8 +275,9 @@ export default function FilteredCamera({
       return;
     }
 
+    const canvasStream = canvas.captureStream(30);
     chunksRef.current = [];
-    const recorder = new MediaRecorder(stream, {
+    const recorder = new MediaRecorder(canvasStream, {
       mimeType: mime,
       videoBitsPerSecond: 2_500_000,
     });
@@ -231,6 +296,7 @@ export default function FilteredCamera({
     };
 
     recorder.start(250);
+    recordingStartedAtRef.current = Date.now();
     setRecording(true);
     setRecordSeconds(0);
     stopRecordingTimer();
@@ -282,6 +348,8 @@ export default function FilteredCamera({
 
   function handleRetake() {
     stopActiveRecording();
+    recordingStartedAtRef.current = null;
+    setPreviewVideoBroken(false);
     clearPreview();
     setCapturing(false);
     setFlash(false);
@@ -347,21 +415,31 @@ export default function FilteredCamera({
 
   const activeFilter = FILTER_PRESETS.find((f) => f.id === filterId);
 
-  const showVideoMode = videoEnabled && Boolean(onVideoCapture);
-  const isVideoMode = showVideoMode && mode === 'video';
-
   return createPortal(
     <div className="fixed inset-0 z-[110] bg-black text-white">
       {/* Full-bleed viewfinder / review */}
       <div className="absolute inset-0" onClick={reviewing ? undefined : handleViewfinderTap}>
         {reviewing ? (
           preview.kind === 'video' ? (
-            <video
-              src={preview.url}
-              playsInline
-              controls
-              className="h-full w-full object-cover"
-            />
+            previewVideoBroken ? (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-black px-6 text-center">
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-2xl">▶</span>
+                <p className="text-lg font-semibold">Clip ready</p>
+                <p className="text-sm text-white/60">
+                  {(preview.durationSec ?? 0) > 0 ? `${preview.durationSec}s clip` : 'Short clip'} — preview not supported on this device, but upload will work.
+                </p>
+              </div>
+            ) : (
+              <video
+                key={preview.url}
+                src={preview.url}
+                playsInline
+                controls
+                muted
+                className="h-full w-full object-cover"
+                onError={() => setPreviewVideoBroken(true)}
+              />
+            )
           ) : (
             <img
               src={preview.url}
@@ -370,16 +448,24 @@ export default function FilteredCamera({
             />
           )
         ) : (
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            autoPlay
-            className={`h-full w-full object-cover transition-[filter] duration-300 ${
-              facingMode === 'user' ? 'scale-x-[-1]' : ''
-            }`}
-            style={{ filter: isVideoMode ? undefined : getFilterCss(filterId) }}
-          />
+          <>
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              className={`h-full w-full object-cover transition-[filter] duration-300 ${
+                isVideoMode ? 'pointer-events-none absolute inset-0 opacity-0' : ''
+              } ${!isVideoMode && facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+              style={{ filter: isVideoMode ? undefined : getFilterCss(filterId) }}
+            />
+            {isVideoMode && (
+              <canvas
+                ref={filterCanvasRef}
+                className="h-full w-full object-cover"
+              />
+            )}
+          </>
         )}
 
         {/* Soft vignette + control readability gradients */}
@@ -478,7 +564,7 @@ export default function FilteredCamera({
         </div>
       )}
 
-      {!reviewing && !recording && !isVideoMode && (
+      {!reviewing && !recording && (
         <div
           className={`pointer-events-none absolute left-1/2 top-[22%] z-10 -translate-x-1/2 rounded-full bg-black/45 px-4 py-1.5 text-sm font-medium tracking-wide backdrop-blur-md transition-all duration-300 ${
             filterLabelVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
@@ -536,48 +622,46 @@ export default function FilteredCamera({
               </div>
             )}
 
-            {!isVideoMode && (
-              <div className="mb-5 -mx-1 flex gap-3 overflow-x-auto px-2 pb-1 scrollbar-none">
-                {FILTER_PRESETS.map((preset) => {
-                  const active = filterId === preset.id;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        selectFilter(preset.id);
-                      }}
-                      className="flex shrink-0 flex-col items-center gap-1.5"
+            <div className="mb-5 flex justify-center gap-3 px-2 pb-1">
+              {FILTER_PRESETS.map((preset) => {
+                const active = filterId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectFilter(preset.id);
+                    }}
+                    className="flex shrink-0 flex-col items-center gap-1.5"
+                  >
+                    <span
+                      className={`rounded-full p-[2px] transition-transform duration-200 ${
+                        active
+                          ? 'scale-110 bg-gradient-to-br from-white via-cyan-200 to-amber-200'
+                          : 'bg-white/25'
+                      }`}
                     >
                       <span
-                        className={`rounded-full p-[2px] transition-transform duration-200 ${
-                          active
-                            ? 'scale-110 bg-gradient-to-br from-white via-cyan-200 to-amber-200'
-                            : 'bg-white/25'
-                        }`}
-                      >
-                        <span
-                          className="block h-12 w-12 rounded-full border-2 border-black/40 shadow-lg"
-                          style={{ background: FILTER_SWATCH[preset.id] }}
-                        />
-                      </span>
-                      <span
-                        className={`text-[11px] font-medium ${
-                          active ? 'text-white' : 'text-white/55'
-                        }`}
-                      >
-                        {preset.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                        className="block h-12 w-12 rounded-full border-2 border-black/40 shadow-lg"
+                        style={{ background: FILTER_SWATCH[preset.id] }}
+                      />
+                    </span>
+                    <span
+                      className={`text-[11px] font-medium ${
+                        active ? 'text-white' : 'text-white/55'
+                      }`}
+                    >
+                      {preset.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
             {isVideoMode && (
               <p className="mb-4 text-center text-xs text-white/55">
-                Tap to record · max {maxDurationSec}s · uploads go straight to Cloudinary
+                Tap to record · max {maxDurationSec}s · filter is baked into the clip
               </p>
             )}
 
