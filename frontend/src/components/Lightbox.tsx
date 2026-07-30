@@ -226,6 +226,7 @@ export default function Lightbox({ photos, photo, onClose, onSelect }: Props) {
             poster={photo.thumbUrl}
             controls
             playsInline
+            preload="auto"
             className="max-h-[90vh] max-w-full select-none rounded-lg object-contain"
           />
         ) : (

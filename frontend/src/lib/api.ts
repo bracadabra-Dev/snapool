@@ -118,13 +118,55 @@ export const api = {
       method: 'DELETE',
     }, token),
 
+  uploadEventFlyer: (token: string, eventId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request<{ event: EventDetail }>(`/api/events/${eventId}/assets/flyer`, {
+      method: 'POST',
+      body: form,
+    }, token);
+  },
+
+  deleteEventFlyer: (token: string, eventId: string) =>
+    request<{ event: EventDetail }>(`/api/events/${eventId}/assets/flyer`, {
+      method: 'DELETE',
+    }, token),
+
+  uploadEventWatermark: (token: string, eventId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request<{ event: EventDetail }>(`/api/events/${eventId}/assets/watermark`, {
+      method: 'POST',
+      body: form,
+    }, token);
+  },
+
+  deleteEventWatermark: (token: string, eventId: string) =>
+    request<{ event: EventDetail }>(`/api/events/${eventId}/assets/watermark`, {
+      method: 'DELETE',
+    }, token),
+
+  uploadEventLogo: (token: string, eventId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request<{ event: EventDetail }>(`/api/events/${eventId}/assets/logo`, {
+      method: 'POST',
+      body: form,
+    }, token);
+  },
+
   getPublicEvent: (slug: string) =>
     request<{ event: PublicEvent }>(`/api/e/${slug}`),
 
   getCapabilities: (slug: string) =>
-    request<{ photos: { maxPerContributor: number }; video: VideoCapabilities; features: Record<string, boolean> }>(
-      `/api/e/${slug}/capabilities`
-    ),
+    request<{
+      photos: { maxPerContributor: number };
+      video: VideoCapabilities;
+      features: Record<string, boolean>;
+      theme: EventTheme;
+      watermark: EventWatermark;
+      brandingRevision: number;
+    }>(`/api/e/${slug}/capabilities`),
 
   createSession: (slug: string, body?: { name?: string; phone?: string }) =>
     request<{ token: string; contributor: { id: string; name: string | null; maxPhotos: number } }>(
@@ -265,6 +307,18 @@ export type EventSummary = {
   createdAt: string;
 };
 
+export type EventTheme = {
+  accent: string;
+  accentInk: string;
+  source: 'default' | 'flyer' | 'manual';
+  version: number;
+};
+
+export type EventWatermark = {
+  mode: 'platform' | 'custom';
+  imageUrl: string;
+};
+
 export type EventConfig = {
   name: string;
   visibility: string;
@@ -276,6 +330,12 @@ export type EventConfig = {
   thankYouMessage?: string | null;
   brandingLogoUrl?: string | null;
   coverImageUrl?: string | null;
+  themeAccent?: string | null;
+  themeAccentInk?: string | null;
+  themeSource?: string;
+  themeVersion?: number;
+  watermarkImageUrl?: string | null;
+  brandingRevision?: number;
   retentionDays: number;
   videoEnabled?: boolean;
   paidFeaturesUnlocked?: boolean;
@@ -307,6 +367,9 @@ export type PublicEvent = {
   maxPhotosPerContributor: number;
   ownerBusinessName?: string | null;
   ownerPortfolioUrl?: string | null;
+  theme: EventTheme;
+  watermark: EventWatermark;
+  brandingRevision: number;
 };
 
 export type PlatformSettings = {

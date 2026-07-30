@@ -10,6 +10,9 @@ import Lightbox from '../components/Lightbox';
 import ThankChip from '../components/ThankChip';
 import LiveStatusChip from '../components/LiveStatusChip';
 import { ImagesIcon, SparkIcon, UsersIcon } from '../components/icons';
+import EventSplash from '../components/EventSplash';
+import { useEventTheme } from '../hooks/useEventTheme';
+import { useEventWatermark } from '../hooks/useEventWatermark';
 import { useEventLiveGallery } from '../hooks/useEventLiveGallery';
 
 import { legacyStorageKey, readStorageItem, storageKey } from '../lib/storageKeys';
@@ -55,6 +58,8 @@ export default function ContributorPage() {
   }, []);
 
   const { video } = useVideoCapabilities(slug);
+  const themeStyle = useEventTheme(event?.theme);
+  const uploadWatermark = useEventWatermark(event?.watermark, event?.brandingRevision ?? 0);
 
   const {
     photos,
@@ -193,7 +198,7 @@ export default function ContributorPage() {
     }
     setError(null);
     setShowThanks(false);
-    setStatus('Compressing…');
+    setStatus('Preparing…');
     setProgress(15);
     try {
       let session =
@@ -202,7 +207,7 @@ export default function ContributorPage() {
           : await ensureSession();
       setProgress(40);
       setStatus('Uploading…');
-      const { full, thumb } = await compressForUpload(file);
+      const { full, thumb } = await compressForUpload(file, { watermark: uploadWatermark ?? undefined });
       setProgress(70);
 
       try {
@@ -251,7 +256,18 @@ export default function ContributorPage() {
   const galleryHidden = !event.galleryLive;
 
   return (
-    <div className="event-atmosphere relative mx-auto min-h-screen max-w-lg pb-[calc(8rem+env(safe-area-inset-bottom))]">
+    <div
+      className="event-atmosphere relative mx-auto min-h-screen max-w-lg pb-[calc(8rem+env(safe-area-inset-bottom))]"
+      style={themeStyle}
+    >
+      {event.coverImageUrl && (
+        <EventSplash
+          slug={slug}
+          flyerUrl={event.coverImageUrl}
+          themeVersion={event.theme.version}
+          eventName={event.name}
+        />
+      )}
       <header className="relative px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))]">
         {event.brandingLogoUrl && (
           <img
@@ -269,16 +285,6 @@ export default function ContributorPage() {
         <p className="mt-3 max-w-[28ch] text-sm leading-relaxed text-white/50">
           All angles, one pool - scroll
         </p>
-
-        {event.coverImageUrl && (
-          <div className="mt-5 overflow-hidden rounded-[1.75rem]">
-            <img
-              src={event.coverImageUrl}
-              alt=""
-              className="aspect-[16/10] w-full object-cover"
-            />
-          </div>
-        )}
       </header>
 
       <div className="sticky top-0 z-30 border-b border-white/10 bg-[var(--ink)]/80 px-4 backdrop-blur-xl">

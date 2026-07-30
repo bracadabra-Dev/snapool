@@ -1,6 +1,7 @@
 import { ChangeEvent, useRef, useState } from 'react';
 import { VideoCapabilities } from '../lib/api';
 import { compressForUpload } from '../lib/compress';
+import { type WatermarkConfig } from '../lib/watermark';
 import { runVideoUpload } from '../features/video/runVideoUpload';
 import VideoMaintenanceSheet from '../features/video/VideoMaintenanceSheet';
 
@@ -9,6 +10,7 @@ type Props = {
   video?: VideoCapabilities | null;
   getVideoSignature?: () => Promise<{ upload: import('../lib/api').VideoUploadParams; maxDurationSec: number }>;
   onVideoComplete?: (body: import('../lib/api').VideoCompleteBody) => Promise<void>;
+  watermark?: WatermarkConfig | null;
 };
 
 export default function ProShotUpload({
@@ -16,6 +18,7 @@ export default function ProShotUpload({
   video,
   getVideoSignature,
   onVideoComplete,
+  watermark = null,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -41,7 +44,7 @@ export default function ProShotUpload({
         return;
       }
 
-      const { full, thumb } = await compressForUpload(file);
+      const { full, thumb } = await compressForUpload(file, { watermark });
       await onPhotoUpload(full, thumb);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');

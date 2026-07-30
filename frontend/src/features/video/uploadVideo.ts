@@ -39,9 +39,8 @@ export async function uploadVideoToCloudinary(
 export function parseCloudinaryUploadResult(result: Record<string, unknown>) {
   const publicId = result.public_id as string;
   const eager = (result.eager as Array<{ secure_url?: string; format?: string }>) || [];
-  const mp4 = eager.find((e) => e.format === 'mp4') || eager[0];
   const poster = eager.find((e) => e.format === 'jpg');
-  const fullUrl = mp4?.secure_url || (result.secure_url as string);
+  const fullUrl = (result.secure_url as string) || poster?.secure_url || '';
   const thumbUrl = poster?.secure_url || fullUrl.replace(/\.[^.]+$/, '.jpg');
   const duration = typeof result.duration === 'number' ? Math.round(result.duration) : undefined;
   return { publicId, fullUrl, thumbUrl, duration };

@@ -46,6 +46,26 @@ app.post('/api/events', requireAuth, events.createEvent);
 app.get('/api/events/:id', requireAuth, events.getEvent);
 app.patch('/api/events/:id', requireAuth, events.updateEvent);
 app.post(
+  '/api/events/:id/assets/flyer',
+  requireAuth,
+  events.assetUpload.single('file'),
+  events.uploadFlyer
+);
+app.delete('/api/events/:id/assets/flyer', requireAuth, events.deleteFlyer);
+app.post(
+  '/api/events/:id/assets/watermark',
+  requireAuth,
+  events.assetUpload.single('file'),
+  events.uploadWatermark
+);
+app.delete('/api/events/:id/assets/watermark', requireAuth, events.deleteWatermark);
+app.post(
+  '/api/events/:id/assets/logo',
+  requireAuth,
+  events.assetUpload.single('file'),
+  events.uploadLogo
+);
+app.post(
   '/api/events/:id/pro-upload',
   requireAuth,
   uploadRateLimit,

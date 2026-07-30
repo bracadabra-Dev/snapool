@@ -17,6 +17,16 @@ import {
 } from '../lib/plans';
 import { getPlatformSettings, getPlanDefinition } from '../lib/platformConfig';
 import { deleteCloudinaryVideo } from '../features/video/cloudinary';
+import {
+  processAndUploadFlyer,
+  uploadWatermarkPng,
+  uploadLogoPng,
+  deleteAssetByUrl,
+  resetThemeFields,
+  extractThemeFromImage,
+} from '../lib/imageAssets';
+import { computeAccentInk } from '../lib/eventBranding';
+import { getEffectiveLimits } from '../lib/platformConfig';
 
 export const upload = multer({
   storage: multer.memoryStorage(),
@@ -47,6 +57,17 @@ const createEventSchema = z.object({
 const updateEventSchema = createEventSchema.partial().extend({
   name: z.string().min(1).max(120).optional(),
   password: z.string().min(4).optional().nullable(),
+  themeAccent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
+  themeSource: z.enum(['default', 'flyer', 'manual']).optional(),
+});
+
+export const assetUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 4 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only image uploads are allowed'));
+  },
 });
 
 function eventPublicUrl(slug: string): string {
@@ -215,6 +236,28 @@ export async function updateEvent(req: AuthedRequest, res: Response, next: NextF
         ? new Date(rest.contributionClosesAt)
         : null;
     }
+    if (rest.themeSource === 'flyer' && existing.coverImageUrl) {
+      try {
+        const res = await fetch(existing.coverImageUrl);
+        if (res.ok) {
+          const buffer = Buffer.from(await res.arrayBuffer());
+          const theme = await extractThemeFromImage(buffer);
+          if (theme) {
+            data.themeAccent = theme.accent;
+            data.themeAccentInk = theme.accentInk;
+            data.themeSource = 'flyer';
+          }
+        }
+      } catch {
+        /* keep existing theme */
+      }
+    }
+    if (rest.themeAccent !== undefined && rest.themeSource === 'manual' && rest.themeAccent) {
+      data.themeAccentInk = computeAccentInk(rest.themeAccent);
+    }
+    if (rest.themeSource === 'default') {
+      Object.assign(data, resetThemeFields());
+    }
 
     const event = await prisma.event.update({
       where: { id: existing.id },
@@ -315,6 +358,202 @@ export async function deletePhoto(req: AuthedRequest, res: Response, next: NextF
     emitPhotoDeleted(photo.event.slug, photo.id);
     res.json({ ok: true });
   } catch (err) {
+    next(err);
+  }
+}
+
+async function getOwnedEvent(req: AuthedRequest, eventId: string) {
+  return prisma.event.findFirst({
+    where: { id: eventId, ownerId: req.user!.userId },
+  });
+}
+
+export async function uploadFlyer(req: AuthedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const existing = await getOwnedEvent(req, req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: 'Flyer image file is required' });
+      return;
+    }
+
+    const result = await processAndUploadFlyer(existing.id, file);
+    await deleteAssetByUrl(existing.coverImageUrl);
+
+    const themeFields =
+      result.themeSource === 'flyer' && result.themeAccent
+        ? {
+            themeAccent: result.themeAccent,
+            themeAccentInk: result.themeAccentInk,
+            themeSource: 'flyer' as const,
+          }
+        : resetThemeFields();
+
+    const event = await prisma.event.update({
+      where: { id: existing.id },
+      data: {
+        coverImageUrl: result.url,
+        ...themeFields,
+        themeVersion: { increment: 1 },
+      },
+    });
+
+    res.json({
+      event: { ...event, publicUrl: eventPublicUrl(event.slug) },
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('Flyer')) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+}
+
+export async function deleteFlyer(req: AuthedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const existing = await getOwnedEvent(req, req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+    await deleteAssetByUrl(existing.coverImageUrl);
+    const event = await prisma.event.update({
+      where: { id: existing.id },
+      data: {
+        coverImageUrl: null,
+        ...resetThemeFields(),
+        themeVersion: { increment: 1 },
+      },
+    });
+    res.json({ event: { ...event, publicUrl: eventPublicUrl(event.slug) } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function uploadWatermark(req: AuthedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const existing = await getOwnedEvent(req, req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+    const owner = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!owner) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const limits = await getEffectiveLimits(owner, existing);
+    if (!limits.features.allowCustomBranding) {
+      throw new PlanError('Custom branding requires a paid plan', 403, 'PLAN_BRANDING');
+    }
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: 'Watermark PNG file is required' });
+      return;
+    }
+    const url = await uploadWatermarkPng(existing.id, file);
+    await deleteAssetByUrl(existing.watermarkImageUrl);
+    const event = await prisma.event.update({
+      where: { id: existing.id },
+      data: {
+        watermarkImageUrl: url,
+        brandingRevision: { increment: 1 },
+      },
+    });
+    res.json({ event: { ...event, publicUrl: eventPublicUrl(event.slug) } });
+  } catch (err) {
+    if (err instanceof PlanError) {
+      sendPlanError(res, err);
+      return;
+    }
+    if (err instanceof Error && err.message.includes('Watermark')) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+}
+
+export async function deleteWatermark(req: AuthedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const existing = await getOwnedEvent(req, req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+    const owner = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!owner) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const limits = await getEffectiveLimits(owner, existing);
+    if (!limits.features.allowCustomBranding) {
+      throw new PlanError('Custom branding requires a paid plan', 403, 'PLAN_BRANDING');
+    }
+    await deleteAssetByUrl(existing.watermarkImageUrl);
+    const event = await prisma.event.update({
+      where: { id: existing.id },
+      data: {
+        watermarkImageUrl: null,
+        brandingRevision: { increment: 1 },
+      },
+    });
+    res.json({ event: { ...event, publicUrl: eventPublicUrl(event.slug) } });
+  } catch (err) {
+    if (err instanceof PlanError) {
+      sendPlanError(res, err);
+      return;
+    }
+    next(err);
+  }
+}
+
+export async function uploadLogo(req: AuthedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const existing = await getOwnedEvent(req, req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+    const owner = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!owner) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const limits = await getEffectiveLimits(owner, existing);
+    if (!limits.features.allowCustomBranding) {
+      throw new PlanError('Custom branding requires a paid plan', 403, 'PLAN_BRANDING');
+    }
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: 'Logo PNG file is required' });
+      return;
+    }
+    const url = await uploadLogoPng(existing.id, file);
+    await deleteAssetByUrl(existing.brandingLogoUrl);
+    const event = await prisma.event.update({
+      where: { id: existing.id },
+      data: {
+        brandingLogoUrl: url,
+        brandingRevision: { increment: 1 },
+      },
+    });
+    res.json({ event: { ...event, publicUrl: eventPublicUrl(event.slug) } });
+  } catch (err) {
+    if (err instanceof PlanError) {
+      sendPlanError(res, err);
+      return;
+    }
+    if (err instanceof Error && err.message.includes('Logo')) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
     next(err);
   }
 }

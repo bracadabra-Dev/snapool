@@ -21,8 +21,11 @@ export function isCloudinaryReady(): boolean {
   return Boolean(env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET);
 }
 
+/** Poster/thumbnail only — playback uses the original upload (no video re-encode). */
+export const EAGER_POSTER_TRANSFORM = 'w_400,c_fill,g_auto,f_jpg';
+
 /** Pipe-separated eager transforms for signed browser uploads. */
-export const EAGER_TRANSFORM_STRING = 'w_1280,c_limit,q_auto,f_mp4|w_400,c_fill,g_auto,f_jpg';
+export const EAGER_TRANSFORM_STRING = EAGER_POSTER_TRANSFORM;
 
 /** @deprecated Use EAGER_TRANSFORM_STRING — kept for exports/tests */
 const EAGER_TRANSFORMS = EAGER_TRANSFORM_STRING;
@@ -96,10 +99,10 @@ export function parseCloudinaryResult(result: Record<string, unknown>): {
   if (!publicId) return null;
 
   const eager = (result.eager as Array<{ secure_url?: string; format?: string }>) || [];
-  const mp4 = eager.find((e) => e.format === 'mp4') || eager[0];
   const poster = eager.find((e) => e.format === 'jpg');
 
-  const fullUrl = mp4?.secure_url || (result.secure_url as string);
+  const fullUrl = (result.secure_url as string) || poster?.secure_url || '';
+  if (!fullUrl) return null;
   const thumbUrl =
     poster?.secure_url ||
     cloudinary.url(publicId, {

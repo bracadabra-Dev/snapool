@@ -126,7 +126,7 @@ export function drawFilteredVideoFrame(
     canvas.height = height;
   }
 
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) return false;
 
   ctx.save();
@@ -139,6 +139,41 @@ export function drawFilteredVideoFrame(
   ctx.drawImage(video, 0, 0, width, height);
   ctx.restore();
   return true;
+}
+
+/** Sync canvas draws to camera frames when supported; falls back to rAF. */
+export function scheduleVideoFrameDraw(video: HTMLVideoElement, draw: () => void): () => void {
+  let cancelled = false;
+  let rafId: number | null = null;
+  let vfcHandle = 0;
+
+  const runDraw = () => {
+    if (!cancelled) draw();
+  };
+
+  if ('requestVideoFrameCallback' in video) {
+    const onFrame = () => {
+      if (cancelled) return;
+      runDraw();
+      vfcHandle = video.requestVideoFrameCallback(onFrame);
+    };
+    vfcHandle = video.requestVideoFrameCallback(onFrame);
+  } else {
+    const tick = () => {
+      if (cancelled) return;
+      runDraw();
+      rafId = window.requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  return () => {
+    cancelled = true;
+    if (rafId != null) window.cancelAnimationFrame(rafId);
+    if (vfcHandle && 'cancelVideoFrameCallback' in video) {
+      video.cancelVideoFrameCallback(vfcHandle);
+    }
+  };
 }
 
 export function captureFilteredFrame(

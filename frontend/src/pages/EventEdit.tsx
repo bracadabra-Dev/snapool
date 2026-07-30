@@ -1,20 +1,25 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api, EventDetail, Photo } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import GalleryGrid from '../components/GalleryGrid';
 import Lightbox from '../components/Lightbox';
 import ProShotUpload from '../components/ProShotUpload';
+import EventBrandingPanel from '../components/EventBrandingPanel';
 import { useEventLiveRoom } from '../hooks/useEventLiveRoom';
+import { useEventWatermark } from '../hooks/useEventWatermark';
 import { useVideoCapabilities } from '../features/video/useVideoCapabilities';
+import { defaultPlatformWatermarkUrl } from '../lib/watermark';
 import { upsertPhotos } from '../lib/realtime';
 
 type Tab = 'all' | 'pro' | 'contributor';
 
 export default function EventEdit() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { token, user } = useAuth();
   const [event, setEvent] = useState<EventDetail | null>(null);
+  const [allowCustomBranding, setAllowCustomBranding] = useState(false);
   const { video } = useVideoCapabilities(event?.slug);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -35,6 +40,13 @@ export default function EventEdit() {
   useEffect(() => {
     void load();
   }, [token, id]);
+
+  useEffect(() => {
+    if (!event?.slug) return;
+    void api.getCapabilities(event.slug).then((res) => {
+      setAllowCustomBranding(Boolean(res.features.allowCustomBranding));
+    });
+  }, [event?.slug]);
 
   const onPhotoCreated = useCallback((photo: Photo) => {
     setEvent((prev) => {
@@ -103,6 +115,14 @@ export default function EventEdit() {
     onPhotoCreated(res.photo);
   }
 
+  const brandingRevision = event?.brandingRevision ?? 0;
+  const proWatermark = useEventWatermark(
+    allowCustomBranding && event?.watermarkImageUrl
+      ? { mode: 'custom', imageUrl: event.watermarkImageUrl }
+      : { mode: 'platform', imageUrl: defaultPlatformWatermarkUrl() },
+    brandingRevision
+  );
+
   async function purchaseVideoAddon() {
     if (!token || !event) return;
     try {
@@ -166,6 +186,17 @@ export default function EventEdit() {
           </div>
         )}
       </div>
+
+      {token && event && (
+        <div className={`mt-5 ${searchParams.get('setup') === '1' ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--ink)] rounded-xl' : ''}`}>
+          <EventBrandingPanel
+            token={token}
+            event={event}
+            allowCustomBranding={allowCustomBranding}
+            onEventUpdate={(updated) => setEvent(updated)}
+          />
+        </div>
+      )}
 
       <form onSubmit={onSave} className="surface mt-5 space-y-4 p-4">
         <h2 className="font-display text-xl font-bold">Settings</h2>
@@ -289,6 +320,7 @@ export default function EventEdit() {
         <ProShotUpload
           onPhotoUpload={onProUpload}
           video={video}
+          watermark={proWatermark}
           getVideoSignature={() => api.ownerVideoSignature(token!, event!.id)}
           onVideoComplete={async (body) => {
             const res = await api.ownerVideoComplete(token!, event!.id, body);

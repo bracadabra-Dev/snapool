@@ -43,6 +43,12 @@ model Event {
   maxVideosPerContributor Int?
   requireContributorName  Boolean            @default(false)
   brandingLogoUrl         String?
+  themeAccent             String?
+  themeAccentInk          String?
+  themeSource             String   @default("default")
+  themeVersion            Int      @default(0)
+  watermarkImageUrl       String?
+  brandingRevision        Int      @default(0)
   thankYouMessage         String?
   retentionDays           Int                @default(7)
   videoEnabled            Boolean            @default(false)
@@ -92,6 +98,7 @@ model PlatformSettings {
   defaultRetentionDays    Int      @default(7)
   uploadRateLimitPerMinute Int     @default(10)
   currency                String   @default("XAF")
+  platformWatermarkUrl    String?
   updatedAt               DateTime @updatedAt
   updatedBy               String?
 }

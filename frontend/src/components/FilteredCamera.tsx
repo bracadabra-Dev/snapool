@@ -7,7 +7,13 @@ import {
   captureFilteredFrame,
   drawFilteredVideoFrame,
   getFilterCss,
+  scheduleVideoFrameDraw,
 } from '../lib/filters';
+import {
+  cameraFrameRate,
+  pickRecorderMime,
+  videoBitrateForResolution,
+} from '../features/video/recording';
 import { tagRecordedVideoDuration } from '../features/video/validateVideo';
 
 type Props = {
@@ -27,18 +33,6 @@ type PreviewState = {
   posterUrl?: string;
 };
 
-function pickRecorderMime(): string {
-  const types = [
-    'video/mp4;codecs=avc1,mp4a.40.2',
-    'video/mp4;codecs=avc1',
-    'video/mp4',
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus',
-    'video/webm',
-  ];
-  return types.find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) || '';
-}
-
 export default function FilteredCamera({
   onCapture,
   onClose,
@@ -51,7 +45,7 @@ export default function FilteredCamera({
   const filterCanvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
-  const drawLoopRef = useRef<number | null>(null);
+  const cancelDrawLoopRef = useRef<(() => void) | null>(null);
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
 
@@ -103,8 +97,9 @@ export default function FilteredCamera({
           audio: false,
           video: {
             facingMode: { ideal: facingMode },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 },
+            frameRate: { ideal: 30, min: 24 },
           },
         });
         if (cancelled) {
@@ -115,6 +110,10 @@ export default function FilteredCamera({
         streamRef.current = stream;
         const track = stream.getVideoTracks()[0] ?? null;
         trackRef.current = track;
+
+        if (import.meta.env.DEV && track) {
+          console.debug('[FilteredCamera] track settings', track.getSettings());
+        }
 
         const caps = track?.getCapabilities?.() as
           | (MediaTrackCapabilities & { torch?: boolean })
@@ -157,16 +156,14 @@ export default function FilteredCamera({
       if (focusTimer.current) window.clearTimeout(focusTimer.current);
       if (labelTimer.current) window.clearTimeout(labelTimer.current);
       if (recordTimerRef.current) window.clearInterval(recordTimerRef.current);
-      if (drawLoopRef.current) window.cancelAnimationFrame(drawLoopRef.current);
+      cancelDrawLoopRef.current?.();
       recorderRef.current?.stop();
     };
   }, []);
 
   function stopFilterDrawLoop() {
-    if (drawLoopRef.current != null) {
-      window.cancelAnimationFrame(drawLoopRef.current);
-      drawLoopRef.current = null;
-    }
+    cancelDrawLoopRef.current?.();
+    cancelDrawLoopRef.current = null;
   }
 
   function runFilterDrawLoop() {
@@ -174,18 +171,15 @@ export default function FilteredCamera({
     const video = videoRef.current;
     if (!canvas || !video) return;
 
-    const tick = () => {
+    stopFilterDrawLoop();
+    cancelDrawLoopRef.current = scheduleVideoFrameDraw(video, () => {
       drawFilteredVideoFrame(
         video,
         canvas,
         filterIdRef.current,
         facingModeRef.current === 'user'
       );
-      drawLoopRef.current = window.requestAnimationFrame(tick);
-    };
-
-    stopFilterDrawLoop();
-    tick();
+    });
   }
 
   useEffect(() => {
@@ -300,11 +294,13 @@ export default function FilteredCamera({
       return;
     }
 
-    const canvasStream = canvas.captureStream(30);
+    const fps = cameraFrameRate(trackRef.current);
+    const { width, height } = canvas;
+    const canvasStream = canvas.captureStream(fps);
     chunksRef.current = [];
     const recorder = new MediaRecorder(canvasStream, {
       mimeType: mime,
-      videoBitsPerSecond: 2_500_000,
+      videoBitsPerSecond: videoBitrateForResolution(width, height),
     });
     recorderRef.current = recorder;
 

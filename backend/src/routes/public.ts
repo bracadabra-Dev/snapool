@@ -6,8 +6,43 @@ import { signContributorToken } from '../lib/jwt';
 import { ContributorRequest } from '../middleware/requireContributor';
 import { uploadToR2 } from '../lib/r2';
 import { emitPhotoCreated } from '../realtime/io';
-import { getEffectiveLimits } from '../lib/platformConfig';
+import { getEffectiveLimits, getPlatformSettings } from '../lib/platformConfig';
+import type { Event, User } from '@prisma/client';
 import { assertPhotoUploadAllowed, PlanError, sendPlanError } from '../lib/plans';
+import {
+  resolveTheme,
+  resolveWatermark,
+  buildPublicBrandingPayload,
+} from '../lib/eventBranding';
+
+async function buildPublicEventPayload(
+  event: Event & {
+    owner: Pick<User, 'businessName' | 'portfolioUrl' | 'plan' | 'planExpiresAt'>;
+  }
+) {
+  const platform = await getPlatformSettings();
+  const theme = resolveTheme(event);
+  const watermark = await resolveWatermark(event, event.owner as User, platform.platformWatermarkUrl);
+  const branding = buildPublicBrandingPayload(event, theme, watermark);
+
+  return {
+    id: event.id,
+    name: event.name,
+    slug: event.slug,
+    coverImageUrl: event.coverImageUrl,
+    brandingLogoUrl: event.brandingLogoUrl,
+    thankYouMessage: event.thankYouMessage,
+    requireContributorName: event.requireContributorName,
+    galleryLive: event.galleryLive,
+    contributionOpen: isContributionOpen(event),
+    maxPhotosPerContributor: event.maxPhotosPerContributor,
+    ownerBusinessName: event.owner.businessName,
+    ownerPortfolioUrl: event.owner.portfolioUrl,
+    theme: branding.theme,
+    watermark: branding.watermark,
+    brandingRevision: branding.brandingRevision,
+  };
+}
 
 function isContributionOpen(event: {
   contributionOpensAt: Date | null;
@@ -24,7 +59,7 @@ export async function getPublicEvent(req: Request, res: Response, next: NextFunc
     const event = await prisma.event.findUnique({
       where: { slug: req.params.slug },
       include: {
-        owner: { select: { businessName: true, portfolioUrl: true } },
+        owner: { select: { businessName: true, portfolioUrl: true, plan: true, planExpiresAt: true } },
       },
     });
     if (!event) {
@@ -33,20 +68,7 @@ export async function getPublicEvent(req: Request, res: Response, next: NextFunc
     }
 
     res.json({
-      event: {
-        id: event.id,
-        name: event.name,
-        slug: event.slug,
-        coverImageUrl: event.coverImageUrl,
-        brandingLogoUrl: event.brandingLogoUrl,
-        thankYouMessage: event.thankYouMessage,
-        requireContributorName: event.requireContributorName,
-        galleryLive: event.galleryLive,
-        contributionOpen: isContributionOpen(event),
-        maxPhotosPerContributor: event.maxPhotosPerContributor,
-        ownerBusinessName: event.owner.businessName,
-        ownerPortfolioUrl: event.owner.portfolioUrl,
-      },
+      event: await buildPublicEventPayload(event),
     });
   } catch (err) {
     next(err);
@@ -186,12 +208,18 @@ export async function getCapabilities(req: Request, res: Response, next: NextFun
     }
 
     const limits = await getEffectiveLimits(event.owner, event);
+    const platform = await getPlatformSettings();
+    const theme = resolveTheme(event);
+    const watermark = await resolveWatermark(event, event.owner, platform.platformWatermarkUrl);
     res.json({
       photos: {
         maxPerContributor: limits.photos.maxPerContributor,
       },
       video: limits.video,
       features: limits.features,
+      theme,
+      watermark,
+      brandingRevision: event.brandingRevision ?? 0,
     });
   } catch (err) {
     next(err);

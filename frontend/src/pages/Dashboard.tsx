@@ -37,7 +37,7 @@ export default function Dashboard() {
     setError(null);
     try {
       const res = await api.createEvent(token, { name: name.trim() });
-      navigate(`/events/${res.event.id}`);
+      navigate(`/events/${res.event.id}?setup=1`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create event');
     } finally {

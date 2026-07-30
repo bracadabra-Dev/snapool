@@ -54,6 +54,9 @@ export async function assertEventUpdateAllowed(
     brandingLogoUrl?: string | null;
     thankYouMessage?: string | null;
     coverImageUrl?: string | null;
+    watermarkImageUrl?: string | null;
+    themeAccent?: string | null;
+    themeSource?: string;
     videoEnabled?: boolean;
     maxVideosPerContributor?: number | null;
   }
@@ -76,11 +79,12 @@ export async function assertEventUpdateAllowed(
     );
   }
 
-  const brandingChange =
+  const paidBrandingChange =
     updates.brandingLogoUrl !== undefined ||
-    updates.thankYouMessage !== undefined ||
-    updates.coverImageUrl !== undefined;
-  if (brandingChange && !limits.features.allowCustomBranding) {
+    updates.watermarkImageUrl !== undefined ||
+    (updates.themeAccent !== undefined && updates.themeSource === 'manual') ||
+    updates.themeSource === 'manual';
+  if (paidBrandingChange && !limits.features.allowCustomBranding) {
     throw new PlanError('Custom branding requires a paid plan', 403, 'PLAN_BRANDING');
   }
 
