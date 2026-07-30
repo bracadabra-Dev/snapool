@@ -160,7 +160,7 @@ export default function EventBrandingPanel({ token, event, allowCustomBranding, 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)]/60 p-3 text-sm">
             <p className="font-semibold">Upgrade for custom logo, watermark, and accent override</p>
             <p className="mt-1 text-[var(--muted)]">
-              Free events use PixDump colors and watermark on all photos.
+              Free events use PixDump colors and the pixdump.net watermark on all photos.
             </p>
             <Link to="/pricing" className="btn-primary mt-3 inline-block px-3 py-2 text-xs">
               View plans
@@ -202,7 +202,7 @@ export default function EventBrandingPanel({ token, event, allowCustomBranding, 
             </div>
 
             <div>
-              <p className="mb-1 text-sm text-[var(--muted)]">Custom photo watermark (replaces PixDump)</p>
+              <p className="mb-1 text-sm text-[var(--muted)]">Custom photo watermark (replaces pixdump.net)</p>
               {event.watermarkImageUrl && (
                 <img src={event.watermarkImageUrl} alt="" className="mb-2 h-10 max-w-[160px] object-contain object-left" />
               )}

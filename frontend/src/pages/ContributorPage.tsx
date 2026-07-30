@@ -279,7 +279,7 @@ export default function ContributorPage() {
         <p className="text-[13px] font-medium text-white/55">
           {event.ownerBusinessName || 'Live event gallery'}
         </p>
-        <h1 className="font-display mt-1 text-[2.15rem] font-extrabold leading-[0.95] tracking-tight text-white sm:text-4xl">
+        <h1 className="font-display mt-1 text-[2.15rem] font-extrabold leading-[0.95] tracking-tight text-[var(--accent)] sm:text-4xl">
           {event.name}
         </h1>
         <p className="mt-3 max-w-[28ch] text-sm leading-relaxed text-white/50">
