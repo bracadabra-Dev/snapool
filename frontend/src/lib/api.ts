@@ -370,6 +370,7 @@ export type PublicEvent = {
   theme: EventTheme;
   watermark: EventWatermark;
   brandingRevision: number;
+  viewerCount: number;
 };
 
 export type PlatformSettings = {

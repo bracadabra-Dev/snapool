@@ -259,7 +259,7 @@ export default function ContributorPage() {
 
   return (
     <div
-      className={`event-atmosphere event-themed relative mx-auto min-h-screen max-w-lg pb-[calc(8rem+env(safe-area-inset-bottom))]${event.coverImageUrl ? ' event-atmosphere--flyer-bg' : ''}`}
+      className={`event-atmosphere event-themed relative isolate mx-auto min-h-screen max-w-lg overflow-x-hidden pb-[calc(8rem+env(safe-area-inset-bottom))]${event.coverImageUrl ? ' event-atmosphere--flyer-bg' : ''}`}
       style={themeStyle}
     >
       <EventGalleryBackground
@@ -322,7 +322,7 @@ export default function ContributorPage() {
           ))}
           <LiveStatusChip
             state={galleryHidden ? 'offline' : connection}
-            count={feed.length}
+            viewerCount={event.viewerCount}
           />
         </div>
       </div>

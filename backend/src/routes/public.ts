@@ -14,11 +14,13 @@ import {
   resolveWatermark,
   buildPublicBrandingPayload,
 } from '../lib/eventBranding';
+import { recordEventPageView } from '../lib/eventViews';
 
 async function buildPublicEventPayload(
   event: Event & {
     owner: Pick<User, 'businessName' | 'portfolioUrl' | 'plan' | 'planExpiresAt'>;
-  }
+  },
+  viewerCount: number
 ) {
   const platform = await getPlatformSettings();
   const theme = resolveTheme(event);
@@ -41,6 +43,7 @@ async function buildPublicEventPayload(
     theme: branding.theme,
     watermark: branding.watermark,
     brandingRevision: branding.brandingRevision,
+    viewerCount,
   };
 }
 
@@ -67,8 +70,10 @@ export async function getPublicEvent(req: Request, res: Response, next: NextFunc
       return;
     }
 
+    const viewerCount = await recordEventPageView(event.id, req);
+
     res.json({
-      event: await buildPublicEventPayload(event),
+      event: await buildPublicEventPayload(event, viewerCount),
     });
   } catch (err) {
     next(err);

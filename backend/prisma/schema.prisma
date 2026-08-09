@@ -58,6 +58,7 @@ model Event {
   contributors            Contributor[]
   entitlements            EventEntitlement[]
   payments                PaymentRecord[]
+  pageViews               EventPageView[]
 }
 
 model Contributor {
@@ -173,4 +174,16 @@ model AdminAuditLog {
   after     Json?
   ip        String?
   createdAt DateTime @default(now())
+}
+
+model EventPageView {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ipHash    String
+  firstSeen DateTime @default(now())
+  lastSeen  DateTime @updatedAt
+
+  @@unique([eventId, ipHash])
+  @@index([eventId])
 }
