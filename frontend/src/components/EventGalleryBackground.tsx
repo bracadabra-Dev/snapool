@@ -1,0 +1,39 @@
+type Props = {
+  flyerUrl?: string | null;
+  hasCustomTheme: boolean;
+};
+
+export default function EventGalleryBackground({ flyerUrl, hasCustomTheme }: Props) {
+  if (flyerUrl) {
+    return (
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+        <img
+          src={flyerUrl}
+          alt=""
+          className="h-full w-full scale-105 object-cover blur-[3px]"
+        />
+        <div className="absolute inset-0 bg-black/62" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/75" />
+      </div>
+    );
+  }
+
+  if (hasCustomTheme) {
+    return (
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        aria-hidden="true"
+        style={{
+          background: `
+            radial-gradient(ellipse 120% 85% at 50% -15%, var(--event-gradient-a), transparent 58%),
+            radial-gradient(ellipse 75% 55% at 100% 40%, var(--event-gradient-b), transparent 52%),
+            radial-gradient(ellipse 65% 50% at 0% 85%, var(--event-gradient-b), transparent 48%),
+            var(--event-bg)
+          `,
+        }}
+      />
+    );
+  }
+
+  return null;
+}

@@ -60,6 +60,38 @@ body {
     radial-gradient(1200px 700px at 50% -20%, rgba(80, 90, 160, 0.18), transparent 60%);
 }
 
+.event-themed {
+  color: var(--event-text);
+  --text: var(--event-text);
+  --muted: var(--event-text-muted);
+  --ink: var(--event-bg);
+  --surface: var(--event-surface);
+  --line: var(--event-border);
+}
+
+.event-themed .field {
+  background: color-mix(in srgb, var(--event-bg) 88%, transparent);
+  border-color: var(--event-border);
+  color: var(--event-text);
+}
+
+.event-themed .field:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--event-border));
+}
+
+.event-themed .btn-ghost {
+  border-color: var(--event-border);
+  color: var(--event-text);
+}
+
+.event-themed .event-dock .btn-ghost {
+  background: color-mix(in srgb, var(--event-surface) 70%, transparent);
+}
+
+.event-atmosphere--flyer-bg::before {
+  opacity: 0;
+}
+
 #root {
   min-height: 100vh;
 }

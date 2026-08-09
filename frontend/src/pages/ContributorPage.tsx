@@ -11,7 +11,8 @@ import ThankChip from '../components/ThankChip';
 import LiveStatusChip from '../components/LiveStatusChip';
 import { ImagesIcon, SparkIcon, UsersIcon } from '../components/icons';
 import EventSplash from '../components/EventSplash';
-import { useEventTheme } from '../hooks/useEventTheme';
+import EventGalleryBackground from '../components/EventGalleryBackground';
+import { useEventTheme, useHasCustomEventTheme } from '../hooks/useEventTheme';
 import { useEventWatermark } from '../hooks/useEventWatermark';
 import { useEventLiveGallery } from '../hooks/useEventLiveGallery';
 
@@ -59,6 +60,7 @@ export default function ContributorPage() {
 
   const { video } = useVideoCapabilities(slug);
   const themeStyle = useEventTheme(event?.theme);
+  const hasCustomTheme = useHasCustomEventTheme(event?.theme);
   const uploadWatermark = useEventWatermark(event?.watermark, event?.brandingRevision ?? 0);
 
   const {
@@ -257,9 +259,13 @@ export default function ContributorPage() {
 
   return (
     <div
-      className="event-atmosphere relative mx-auto min-h-screen max-w-lg pb-[calc(8rem+env(safe-area-inset-bottom))]"
+      className={`event-atmosphere event-themed relative mx-auto min-h-screen max-w-lg pb-[calc(8rem+env(safe-area-inset-bottom))]${event.coverImageUrl ? ' event-atmosphere--flyer-bg' : ''}`}
       style={themeStyle}
     >
+      <EventGalleryBackground
+        flyerUrl={event.coverImageUrl}
+        hasCustomTheme={hasCustomTheme && !event.coverImageUrl}
+      />
       {event.coverImageUrl && (
         <EventSplash
           slug={slug}
@@ -268,7 +274,7 @@ export default function ContributorPage() {
           eventName={event.name}
         />
       )}
-      <header className="relative px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))]">
+      <header className="relative z-10 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))]">
         {event.brandingLogoUrl && (
           <img
             src={event.brandingLogoUrl}
@@ -276,18 +282,18 @@ export default function ContributorPage() {
             className="mb-4 h-7 max-w-[45%] object-contain object-left"
           />
         )}
-        <p className="text-[13px] font-medium text-white/55">
+        <p className="text-[13px] font-medium text-[var(--event-text-muted)]">
           {event.ownerBusinessName || 'Live event gallery'}
         </p>
-        <h1 className="font-display mt-1 text-[2.15rem] font-extrabold leading-[0.95] tracking-tight text-[var(--accent)] sm:text-4xl">
+        <h1 className="font-display mt-1 text-[2.15rem] font-extrabold leading-[0.95] tracking-tight text-[var(--event-text-accent)] sm:text-4xl">
           {event.name}
         </h1>
-        <p className="mt-3 max-w-[28ch] text-sm leading-relaxed text-white/50">
+        <p className="mt-3 max-w-[28ch] text-sm leading-relaxed text-[var(--event-text-muted)]">
           All angles, one pool - scroll
         </p>
       </header>
 
-      <div className="sticky top-0 z-30 border-b border-white/10 bg-[var(--ink)]/80 px-4 backdrop-blur-xl">
+      <div className="sticky top-0 z-30 border-b border-[var(--event-border)] bg-[var(--event-bg-elevated)]/88 px-4 backdrop-blur-xl">
         <div className="flex items-end gap-5">
           {(
             [
@@ -301,7 +307,7 @@ export default function ContributorPage() {
               type="button"
               onClick={() => setTab(id)}
               className={`relative inline-flex items-center gap-1.5 pb-3 pt-3 text-sm font-semibold transition ${
-                tab === id ? 'text-white' : 'text-white/40'
+                tab === id ? 'text-[var(--event-text-accent)]' : 'text-[var(--event-text-muted)]'
               }`}
             >
               <Icon
@@ -321,13 +327,13 @@ export default function ContributorPage() {
         </div>
       </div>
 
-      <div className="px-3 pt-3 sm:px-4">
+      <div className="relative z-10 px-3 pt-3 sm:px-4">
         {galleryHidden ? (
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-10 text-center text-sm text-[var(--muted)]">
+          <div className="rounded-3xl border border-[var(--event-border)] bg-[var(--event-surface)]/80 px-4 py-10 text-center text-sm text-[var(--event-text-muted)]">
             The host hasn’t published the gallery yet. You can still contribute.
           </div>
         ) : loadingGallery && !photos.length ? (
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-10 text-center text-sm text-[var(--muted)]">
+          <div className="rounded-3xl border border-[var(--event-border)] bg-[var(--event-surface)]/80 px-4 py-10 text-center text-sm text-[var(--event-text-muted)]">
             Loading shots…
           </div>
         ) : (
@@ -348,10 +354,10 @@ export default function ContributorPage() {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))]">
-        <div className="mx-auto max-w-lg rounded-[1.75rem] border border-white/10 bg-[var(--ink)]/90 p-3 shadow-[0_-12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <div className="event-dock mx-auto max-w-lg rounded-[1.75rem] border border-[var(--event-border)] bg-[var(--event-bg-elevated)]/92 p-3 shadow-[0_-12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           {needsNameGate ? (
             <form onSubmit={startSession} className="space-y-2">
-              <p className="px-1 text-xs text-[var(--muted)]">Name yourself to join the pool</p>
+              <p className="px-1 text-xs text-[var(--event-text-muted)]">Name yourself to join the pool</p>
               <div className="flex gap-2">
                 <input
                   required
@@ -377,11 +383,11 @@ export default function ContributorPage() {
               />
               {status && (
                 <div className="mt-2 px-1">
-                  <div className="mb-1 flex justify-between text-[11px] text-[var(--muted)]">
+                  <div className="mb-1 flex justify-between text-[11px] text-[var(--event-text-muted)]">
                     <span>{status}</span>
                     <span>{progress}%</span>
                   </div>
-                  <div className="h-1 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-1 overflow-hidden rounded-full bg-[var(--event-accent-soft)]">
                     <div
                       className="h-full rounded-full bg-[var(--accent)] transition-all duration-300"
                       style={{ width: `${progress}%` }}

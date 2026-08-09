@@ -82,8 +82,9 @@ export async function assertEventUpdateAllowed(
   const paidBrandingChange =
     updates.brandingLogoUrl !== undefined ||
     updates.watermarkImageUrl !== undefined ||
-    (updates.themeAccent !== undefined && updates.themeSource === 'manual') ||
-    updates.themeSource === 'manual';
+    (!!event.coverImageUrl &&
+      (updates.themeSource === 'manual' ||
+        (updates.themeAccent !== undefined && updates.themeSource !== 'flyer')));
   if (paidBrandingChange && !limits.features.allowCustomBranding) {
     throw new PlanError('Custom branding requires a paid plan', 403, 'PLAN_BRANDING');
   }

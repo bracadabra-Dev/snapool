@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { readStorageItem, storageKey } from '../lib/storageKeys';
 
+const SPLASH_MS = 4000;
+
 type Props = {
   slug: string;
   flyerUrl?: string | null;
@@ -31,7 +33,7 @@ export default function EventSplash({ slug, flyerUrl, themeVersion, eventName }:
     if (!visible) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const timer = window.setTimeout(() => dismiss(), 2500);
+    const timer = window.setTimeout(() => dismiss(), SPLASH_MS);
     return () => {
       document.body.style.overflow = prev;
       window.clearTimeout(timer);
@@ -47,7 +49,7 @@ export default function EventSplash({ slug, flyerUrl, themeVersion, eventName }:
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-black/95 p-4"
+      className="fixed inset-0 z-[90] flex flex-col justify-end bg-black"
       role="dialog"
       aria-modal="true"
       aria-label={`Welcome to ${eventName}`}
@@ -56,20 +58,25 @@ export default function EventSplash({ slug, flyerUrl, themeVersion, eventName }:
       <img
         src={flyerUrl}
         alt={eventName}
-        className="max-h-[min(72vh,720px)] max-w-full rounded-2xl object-contain shadow-2xl"
+        className="absolute inset-0 h-full w-full object-cover"
         onClick={(e) => e.stopPropagation()}
       />
-      <p className="mt-4 text-center text-sm text-white/70">{eventName}</p>
-      <button
-        type="button"
-        className="mt-5 rounded-full border border-white/25 px-5 py-2.5 text-sm font-semibold text-white"
-        onClick={(e) => {
-          e.stopPropagation();
-          dismiss();
-        }}
-      >
-        Continue
-      </button>
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/20" />
+      <div className="relative z-10 flex flex-col items-center px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-24">
+        <p className="font-display text-center text-2xl font-extrabold tracking-tight text-white drop-shadow-lg">
+          {eventName}
+        </p>
+        <button
+          type="button"
+          className="mt-6 rounded-full border border-white/30 bg-black/40 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            dismiss();
+          }}
+        >
+          Continue
+        </button>
+      </div>
     </div>,
     document.body
   );
