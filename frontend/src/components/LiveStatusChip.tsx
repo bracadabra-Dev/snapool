@@ -1,4 +1,5 @@
 import type { LiveConnectionState } from '../lib/realtime';
+import { EyeIcon } from './icons';
 
 type Props = {
   state: LiveConnectionState;
@@ -7,8 +8,9 @@ type Props = {
 
 function ViewerCount({ count }: { count: number }) {
   return (
-    <span className="tabular-nums opacity-90" title="Unique viewers">
-      {count} {count === 1 ? 'viewer' : 'viewers'}
+    <span className="inline-flex items-center gap-0.5 tabular-nums opacity-90" title="Unique viewers">
+      <EyeIcon size={13} className="opacity-80" />
+      {count}
     </span>
   );
 }

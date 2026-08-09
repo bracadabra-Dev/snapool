@@ -259,7 +259,7 @@ export default function ContributorPage() {
 
   return (
     <div
-      className={`event-atmosphere event-themed relative isolate mx-auto min-h-screen max-w-lg overflow-x-hidden pb-[calc(8rem+env(safe-area-inset-bottom))]${event.coverImageUrl ? ' event-atmosphere--flyer-bg' : ''}`}
+      className={`event-atmosphere event-themed relative mx-auto min-h-screen max-w-lg pb-[calc(8rem+env(safe-area-inset-bottom))]${event.coverImageUrl ? ' event-atmosphere--flyer-bg' : ''}`}
       style={themeStyle}
     >
       <EventGalleryBackground
@@ -327,7 +327,7 @@ export default function ContributorPage() {
         </div>
       </div>
 
-      <div className="relative z-10 px-3 pt-3 sm:px-4">
+      <div className="relative z-10 overflow-x-hidden px-3 pt-3 sm:px-4">
         {galleryHidden ? (
           <div className="rounded-3xl border border-[var(--event-border)] bg-[var(--event-surface)]/80 px-4 py-10 text-center text-sm text-[var(--event-text-muted)]">
             The host hasn’t published the gallery yet. You can still contribute.

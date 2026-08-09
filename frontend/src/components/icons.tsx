@@ -97,6 +97,27 @@ export function SparkIcon({ size = 16, className }: IconProps) {
   );
 }
 
+export function EyeIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="2.75" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
 export function UsersIcon({ size = 16, className }: IconProps) {
   return (
     <svg
