@@ -267,7 +267,9 @@ body {
   .rise-delay-1,
   .rise-delay-2,
   .live-dot,
-  .pool-pop {
+  .pool-pop,
+  .camera-focus-ring,
+  .camera-shutter-ready {
     animation: none !important;
   }
 
@@ -278,4 +280,38 @@ body {
   .pool-pop {
     outline: 2px solid var(--accent);
   }
+}
+
+@keyframes camera-focus-in {
+  from {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 0.55;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.camera-focus-ring {
+  animation: camera-focus-in 0.38s var(--ease-out) forwards;
+}
+
+@keyframes camera-shutter-ready {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+
+.camera-shutter-ready {
+  animation: camera-shutter-ready 2.4s ease-in-out infinite;
+}
+
+.camera-screen {
+  --camera-chrome: rgba(0, 0, 0, 0.42);
+  --camera-chrome-strong: rgba(0, 0, 0, 0.62);
 }

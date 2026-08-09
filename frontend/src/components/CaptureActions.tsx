@@ -1,4 +1,4 @@
-import { ChangeEvent, useRef, useState } from 'react';
+import { ChangeEvent, CSSProperties, useRef, useState } from 'react';
 import FilteredCamera from './FilteredCamera';
 import PermissionSheet from './PermissionSheet';
 import UploadExplainerSheet from './UploadExplainerSheet';
@@ -22,6 +22,7 @@ type Props = {
   video?: VideoCapabilities | null;
   contributionOpen?: boolean;
   compact?: boolean;
+  themeStyle?: CSSProperties;
 };
 
 export default function CaptureActions({
@@ -31,6 +32,7 @@ export default function CaptureActions({
   video,
   contributionOpen = true,
   compact = false,
+  themeStyle,
 }: Props) {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [showCamera, setShowCamera] = useState(false);
@@ -154,6 +156,7 @@ export default function CaptureActions({
 
       {showCamera && (
         <FilteredCamera
+          themeStyle={themeStyle}
           videoEnabled={videoAvailable}
           maxDurationSec={video?.maxDurationSec ?? 30}
           onCapture={(file) => {

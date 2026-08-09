@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { cacheBustUrl } from '../lib/cacheBustUrl';
 import { readStorageItem, storageKey } from '../lib/storageKeys';
 
 const SPLASH_MS = 4000;
@@ -47,6 +48,9 @@ export default function EventSplash({ slug, flyerUrl, themeVersion, eventName }:
 
   if (!visible || !flyerUrl) return null;
 
+  const src = cacheBustUrl(flyerUrl, themeVersion);
+  if (!src) return null;
+
   return createPortal(
     <div
       className="fixed inset-0 z-[90] flex flex-col justify-end bg-black"
@@ -56,7 +60,8 @@ export default function EventSplash({ slug, flyerUrl, themeVersion, eventName }:
       onClick={dismiss}
     >
       <img
-        src={flyerUrl}
+        key={src}
+        src={src}
         alt={eventName}
         className="absolute inset-0 h-full w-full object-cover"
         onClick={(e) => e.stopPropagation()}

@@ -1,4 +1,4 @@
-import { MouseEvent, useEffect, useRef, useState } from 'react';
+import { CSSProperties, MouseEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FILTER_PRESETS,
@@ -23,6 +23,7 @@ type Props = {
   videoEnabled?: boolean;
   maxDurationSec?: number;
   onVideoCapture?: (file: File) => void;
+  themeStyle?: CSSProperties;
 };
 
 type PreviewState = {
@@ -40,6 +41,7 @@ export default function FilteredCamera({
   videoEnabled = false,
   maxDurationSec = 30,
   onVideoCapture,
+  themeStyle,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const filterCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -435,9 +437,14 @@ export default function FilteredCamera({
   }
 
   const activeFilter = FILTER_PRESETS.find((f) => f.id === filterId);
+  const recordProgress = Math.min(1, recordSeconds / maxDurationSec);
+  const shutterRing = 2 * Math.PI * 38;
 
   return createPortal(
-    <div className="fixed inset-0 z-[110] bg-black text-white">
+    <div
+      className="camera-screen event-themed fixed inset-0 z-[110] bg-black text-white"
+      style={themeStyle}
+    >
       {/* Full-bleed viewfinder / review */}
       <div className="absolute inset-0" onClick={reviewing ? undefined : handleViewfinderTap}>
         {reviewing ? (
@@ -477,11 +484,14 @@ export default function FilteredCamera({
               )}
             </div>
           ) : (
-            <img
-              src={preview.url}
-              alt="Camera preview"
-              className="h-full w-full object-cover"
-            />
+            <div className="relative h-full w-full">
+              <img
+                src={preview.url}
+                alt="Camera preview"
+                className="h-full w-full object-cover"
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
+            </div>
           )
         ) : (
           <>
@@ -513,24 +523,39 @@ export default function FilteredCamera({
         )}
 
         {!reviewing && showGrid && (
-          <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">
+          <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-80">
             {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="border border-white/20" />
+              <div key={i} className="border border-white/12" />
             ))}
           </div>
         )}
 
+        {!reviewing && ready && (
+          <>
+            <div className="pointer-events-none absolute left-4 top-[calc(max(0.85rem,env(safe-area-inset-top))+3.25rem)] h-7 w-7 rounded-tl-md border-l-2 border-t-2 border-white/30" />
+            <div className="pointer-events-none absolute right-4 top-[calc(max(0.85rem,env(safe-area-inset-top))+3.25rem)] h-7 w-7 rounded-tr-md border-r-2 border-t-2 border-white/30" />
+            <div className="pointer-events-none absolute bottom-52 left-4 h-7 w-7 rounded-bl-md border-b-2 border-l-2 border-white/30" />
+            <div className="pointer-events-none absolute bottom-52 right-4 h-7 w-7 rounded-br-md border-b-2 border-r-2 border-white/30" />
+          </>
+        )}
+
         {!reviewing && focusPoint && (
           <div
-            className="pointer-events-none absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-lg border-2 border-amber-300/90 shadow-[0_0_20px_rgba(251,191,36,0.35)]"
+            className="camera-focus-ring pointer-events-none absolute h-[4.5rem] w-[4.5rem] rounded-md border-2 border-[var(--accent)] shadow-[0_0_24px_color-mix(in_srgb,var(--accent)_40%,transparent)]"
             style={{ left: `${focusPoint.x}%`, top: `${focusPoint.y}%` }}
           />
         )}
 
         {!ready && !reviewing && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-            <p className="text-sm tracking-wide text-white/70">Opening lens…</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/85 backdrop-blur-sm">
+            <div className="relative flex h-14 w-14 items-center justify-center">
+              <div className="absolute inset-0 animate-spin rounded-full border-2 border-white/15 border-t-[var(--accent)]" />
+              <CameraLensIcon />
+            </div>
+            <div className="text-center">
+              <p className="font-display text-sm font-semibold tracking-wide text-white">Opening lens</p>
+              <p className="mt-1 text-xs text-white/55">Hold steady — almost ready</p>
+            </div>
           </div>
         )}
       </div>
@@ -548,23 +573,24 @@ export default function FilteredCamera({
           type="button"
           onClick={handleClose}
           aria-label={reviewing ? 'Discard photo' : 'Close camera'}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 text-xl backdrop-blur-md"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[var(--camera-chrome)] backdrop-blur-md transition hover:bg-[var(--camera-chrome-strong)]"
         >
-          ✕
+          <CloseIcon />
         </button>
 
         {reviewing ? (
-          <p className="rounded-full bg-black/45 px-3 py-1.5 text-xs font-semibold tracking-wide text-white/85 backdrop-blur-md">
-            {preview.kind === 'video' ? 'Use this clip?' : 'Looks good?'}
+          <p className="rounded-full border border-white/10 bg-[var(--camera-chrome)] px-4 py-2 text-xs font-semibold tracking-wide text-white/90 backdrop-blur-md">
+            {preview.kind === 'video' ? 'Review clip' : 'Review shot'}
           </p>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[var(--camera-chrome)] p-1 backdrop-blur-md">
             <button
               type="button"
               onClick={() => setShowGrid((v) => !v)}
               aria-label="Toggle grid"
-              className={`flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-md ${
-                showGrid ? 'bg-white text-black' : 'bg-black/40 text-white'
+              aria-pressed={showGrid}
+              className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
+                showGrid ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'text-white/85 hover:bg-white/10'
               }`}
             >
               <GridIcon />
@@ -574,8 +600,9 @@ export default function FilteredCamera({
                 type="button"
                 onClick={() => void toggleTorch()}
                 aria-label="Toggle flash"
-                className={`flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-md ${
-                  torchOn ? 'bg-amber-300 text-black' : 'bg-black/40 text-white'
+                aria-pressed={torchOn}
+                className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
+                  torchOn ? 'bg-amber-300 text-black' : 'text-white/85 hover:bg-white/10'
                 }`}
               >
                 <BoltIcon />
@@ -586,7 +613,7 @@ export default function FilteredCamera({
                 type="button"
                 onClick={handleFlip}
                 aria-label="Flip camera"
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 backdrop-blur-md"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/85 transition hover:bg-white/10"
               >
                 <FlipIcon />
               </button>
@@ -597,15 +624,23 @@ export default function FilteredCamera({
 
       {/* Filter name toast */}
       {!reviewing && recording && (
-        <div className="pointer-events-none absolute left-1/2 top-[18%] z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-red-600/90 px-4 py-1.5 text-sm font-semibold backdrop-blur-md">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
-          REC {recordSeconds}s / {maxDurationSec}s
+        <div className="pointer-events-none absolute left-1/2 top-[16%] z-10 flex -translate-x-1/2 flex-col items-center gap-2">
+          <div className="flex items-center gap-2 rounded-full border border-red-400/30 bg-red-950/75 px-4 py-1.5 text-sm font-semibold backdrop-blur-md">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
+            REC {recordSeconds}s
+          </div>
+          <div className="h-1 w-28 overflow-hidden rounded-full bg-white/15">
+            <div
+              className="h-full rounded-full bg-red-400 transition-all duration-300"
+              style={{ width: `${recordProgress * 100}%` }}
+            />
+          </div>
         </div>
       )}
 
       {!reviewing && !recording && (
         <div
-          className={`pointer-events-none absolute left-1/2 top-[22%] z-10 -translate-x-1/2 rounded-full bg-black/45 px-4 py-1.5 text-sm font-medium tracking-wide backdrop-blur-md transition-all duration-300 ${
+          className={`pointer-events-none absolute left-1/2 top-[18%] z-10 -translate-x-1/2 rounded-full border border-white/10 bg-[var(--camera-chrome)] px-4 py-1.5 text-sm font-medium tracking-wide backdrop-blur-md transition-all duration-300 ${
             filterLabelVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
           }`}
         >
@@ -614,25 +649,25 @@ export default function FilteredCamera({
       )}
 
       {/* Bottom chrome */}
-      <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4">
+      <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black via-black/75 to-transparent px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-10">
         {reviewing ? (
-          <div className="flex items-center justify-center gap-10 px-4">
+          <div className="flex items-end justify-center gap-12 px-4">
             <button
               type="button"
               onClick={handleRetake}
-              className="flex flex-col items-center gap-2"
+              className="flex flex-col items-center gap-2.5"
             >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-black/45 backdrop-blur-md">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-[var(--camera-chrome)] backdrop-blur-md transition hover:bg-[var(--camera-chrome-strong)]">
                 <RetakeIcon />
               </span>
-              <span className="text-xs font-semibold tracking-wide text-white/80">Retake</span>
+              <span className="text-xs font-semibold tracking-wide text-white/75">Retake</span>
             </button>
             <button
               type="button"
               onClick={handleApprove}
-              className="flex flex-col items-center gap-2"
+              className="flex flex-col items-center gap-2.5"
             >
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] shadow-[0_0_28px_rgba(214,255,60,0.35)]">
+              <span className="flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] shadow-[0_0_32px_color-mix(in_srgb,var(--accent)_42%,transparent)] transition hover:scale-[1.03]">
                 <CheckIcon />
               </span>
               <span className="text-xs font-semibold tracking-wide text-white">
@@ -643,15 +678,17 @@ export default function FilteredCamera({
         ) : (
           <>
             {showVideoMode && (
-              <div className="mb-4 flex justify-center">
-                <div className="inline-flex rounded-full bg-black/45 p-1 backdrop-blur-md">
+              <div className="mb-5 flex justify-center">
+                <div className="inline-flex rounded-full border border-white/10 bg-[var(--camera-chrome)] p-1 backdrop-blur-md">
                   {(['photo', 'video'] as const).map((id) => (
                     <button
                       key={id}
                       type="button"
                       onClick={() => setMode(id)}
-                      className={`rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition ${
-                        mode === id ? 'bg-white text-black' : 'text-white/70'
+                      className={`rounded-full px-5 py-2 text-xs font-bold uppercase tracking-wider transition ${
+                        mode === id
+                          ? 'bg-[var(--accent)] text-[var(--accent-ink)] shadow-sm'
+                          : 'text-white/65 hover:text-white'
                       }`}
                     >
                       {id}
@@ -661,7 +698,7 @@ export default function FilteredCamera({
               </div>
             )}
 
-            <div className="mb-5 flex justify-center gap-3 px-2 pb-1">
+            <div className="scrollbar-none mb-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-1">
               {FILTER_PRESETS.map((preset) => {
                 const active = filterId === preset.id;
                 return (
@@ -672,23 +709,23 @@ export default function FilteredCamera({
                       e.stopPropagation();
                       selectFilter(preset.id);
                     }}
-                    className="flex shrink-0 flex-col items-center gap-1.5"
+                    className="flex shrink-0 snap-center flex-col items-center gap-1.5"
                   >
                     <span
-                      className={`rounded-full p-[2px] transition-transform duration-200 ${
+                      className={`rounded-full p-[2.5px] transition-all duration-200 ${
                         active
-                          ? 'scale-110 bg-gradient-to-br from-white via-cyan-200 to-amber-200'
-                          : 'bg-white/25'
+                          ? 'scale-105 bg-[var(--accent)] shadow-[0_0_18px_color-mix(in_srgb,var(--accent)_45%,transparent)]'
+                          : 'bg-white/20'
                       }`}
                     >
                       <span
-                        className="block h-12 w-12 rounded-full border-2 border-black/40 shadow-lg"
+                        className="block h-11 w-11 rounded-full border-2 border-black/35 shadow-md"
                         style={{ background: FILTER_SWATCH[preset.id] }}
                       />
                     </span>
                     <span
-                      className={`text-[11px] font-medium ${
-                        active ? 'text-white' : 'text-white/55'
+                      className={`min-h-[1rem] text-[10px] font-semibold uppercase tracking-wide ${
+                        active ? 'text-[var(--accent)]' : 'text-transparent'
                       }`}
                     >
                       {preset.label}
@@ -699,47 +736,70 @@ export default function FilteredCamera({
             </div>
 
             {isVideoMode && (
-              <p className="mb-4 text-center text-xs text-white/55">
-                Tap to record · max {maxDurationSec}s · filter is baked into the clip
+              <p className="mb-4 text-center text-[11px] tracking-wide text-white/50">
+                Tap to record · up to {maxDurationSec}s · filter baked in
               </p>
             )}
 
-            {/* Shutter row */}
-            <div className="relative flex items-center justify-center">
-              <button
-                type="button"
-                disabled={!ready || capturing}
-                aria-label={isVideoMode ? (recording ? 'Stop recording' : 'Start recording') : 'Take photo'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isVideoMode) handleVideoShutter();
-                  else void handleShutter();
-                }}
-                className="group relative flex h-[76px] w-[76px] items-center justify-center rounded-full disabled:opacity-40"
-              >
-                <span
-                  className={`absolute inset-0 rounded-full border-[3px] ${
-                    isVideoMode ? 'border-red-400/90' : 'border-white/90'
-                  }`}
-                />
-                <span
-                  className={`rounded-full transition-transform duration-150 ${
-                    isVideoMode
-                      ? recording
-                        ? 'h-[28px] w-[28px] rounded-md bg-red-500'
-                        : 'h-[60px] w-[60px] bg-red-500'
-                      : `h-[60px] w-[60px] bg-white shadow-[0_0_30px_rgba(255,255,255,0.25)] ${
-                          capturing ? 'scale-90' : 'group-active:scale-90'
-                        }`
-                  }`}
-                />
-              </button>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">
+                {isVideoMode ? 'Video' : facingMode === 'environment' ? 'Rear camera' : 'Selfie'}
+              </p>
 
-              <div className="absolute right-6 text-right">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Mode</p>
-                <p className="text-xs font-medium text-white/80">
-                  {isVideoMode ? 'Video' : facingMode === 'environment' ? 'Photo · Rear' : 'Photo · Front'}
-                </p>
+              <div className="relative flex items-center justify-center">
+                {recording && (
+                  <svg
+                    className="pointer-events-none absolute -rotate-90"
+                    width="84"
+                    height="84"
+                    viewBox="0 0 84 84"
+                    aria-hidden="true"
+                  >
+                    <circle cx="42" cy="42" r="38" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="3" />
+                    <circle
+                      cx="42"
+                      cy="42"
+                      r="38"
+                      fill="none"
+                      stroke="#f87171"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeDasharray={shutterRing}
+                      strokeDashoffset={shutterRing * (1 - recordProgress)}
+                    />
+                  </svg>
+                )}
+
+                <button
+                  type="button"
+                  disabled={!ready || capturing}
+                  aria-label={isVideoMode ? (recording ? 'Stop recording' : 'Start recording') : 'Take photo'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isVideoMode) handleVideoShutter();
+                    else void handleShutter();
+                  }}
+                  className={`group relative flex h-[76px] w-[76px] items-center justify-center rounded-full disabled:opacity-40 ${
+                    ready && !capturing && !recording ? 'camera-shutter-ready' : ''
+                  }`}
+                >
+                  <span
+                    className={`absolute inset-0 rounded-full border-[3px] ${
+                      isVideoMode ? 'border-red-400/90' : 'border-white/90'
+                    }`}
+                  />
+                  <span
+                    className={`rounded-full transition-all duration-150 ${
+                      isVideoMode
+                        ? recording
+                          ? 'h-[28px] w-[28px] rounded-md bg-red-500'
+                          : 'h-[60px] w-[60px] bg-red-500 group-active:scale-95'
+                        : `h-[60px] w-[60px] bg-white shadow-[0_0_28px_rgba(255,255,255,0.22)] ${
+                            capturing ? 'scale-90' : 'group-active:scale-90'
+                          }`
+                    }`}
+                  />
+                </button>
               </div>
             </div>
           </>
@@ -747,6 +807,33 @@ export default function FilteredCamera({
       </div>
     </div>,
     document.body
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 6l12 12M18 6 6 18"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CameraLensIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4.5 8.5A2.5 2.5 0 0 1 7 6h1.2l1.1-1.8A1.5 1.5 0 0 1 10.55 3.5h2.9a1.5 1.5 0 0 1 1.25.7L15.8 6H17a2.5 2.5 0 0 1 2.5 2.5v8A2.5 2.5 0 0 1 17 19H7a2.5 2.5 0 0 1-2.5-2.5v-8Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12.5" r="3" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
   );
 }
 

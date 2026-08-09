@@ -53,7 +53,7 @@ export async function processAndUploadFlyer(
     .toBuffer();
 
   const key = `events/${eventId}/flyer.jpg`;
-  const url = await uploadToR2(key, jpeg, 'image/jpeg');
+  const url = await uploadToR2(key, jpeg, 'image/jpeg', 'public, max-age=60, must-revalidate');
 
   if (theme) {
     return {

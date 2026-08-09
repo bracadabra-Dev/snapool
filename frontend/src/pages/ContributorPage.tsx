@@ -12,7 +12,7 @@ import LiveStatusChip from '../components/LiveStatusChip';
 import { ImagesIcon, SparkIcon, UsersIcon } from '../components/icons';
 import EventSplash from '../components/EventSplash';
 import EventGalleryBackground from '../components/EventGalleryBackground';
-import { useEventTheme, useHasCustomEventTheme } from '../hooks/useEventTheme';
+import { useEventTheme } from '../hooks/useEventTheme';
 import { useEventWatermark } from '../hooks/useEventWatermark';
 import { useEventLiveGallery } from '../hooks/useEventLiveGallery';
 
@@ -60,7 +60,6 @@ export default function ContributorPage() {
 
   const { video } = useVideoCapabilities(slug);
   const themeStyle = useEventTheme(event?.theme);
-  const hasCustomTheme = useHasCustomEventTheme(event?.theme);
   const uploadWatermark = useEventWatermark(event?.watermark, event?.brandingRevision ?? 0);
 
   const {
@@ -262,10 +261,7 @@ export default function ContributorPage() {
       className={`event-atmosphere event-themed relative mx-auto min-h-screen max-w-lg pb-[calc(8rem+env(safe-area-inset-bottom))]${event.coverImageUrl ? ' event-atmosphere--flyer-bg' : ''}`}
       style={themeStyle}
     >
-      <EventGalleryBackground
-        flyerUrl={event.coverImageUrl}
-        hasCustomTheme={hasCustomTheme && !event.coverImageUrl}
-      />
+      <EventGalleryBackground flyerUrl={event.coverImageUrl} cacheVersion={event.theme.version} />
       {event.coverImageUrl && (
         <EventSplash
           slug={slug}
@@ -375,6 +371,7 @@ export default function ContributorPage() {
             <>
               <CaptureActions
                 compact
+                themeStyle={themeStyle}
                 disabled={!!status}
                 contributionOpen={event.contributionOpen}
                 video={video}

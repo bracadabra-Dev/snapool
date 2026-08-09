@@ -14,7 +14,8 @@ export const r2 = new S3Client({
 export async function uploadToR2(
   key: string,
   body: Buffer,
-  contentType: string
+  contentType: string,
+  cacheControl?: string
 ): Promise<string> {
   await r2.send(
     new PutObjectCommand({
@@ -22,6 +23,7 @@ export async function uploadToR2(
       Key: key,
       Body: body,
       ContentType: contentType,
+      ...(cacheControl ? { CacheControl: cacheControl } : {}),
     })
   );
   return `${env.R2_PUBLIC_URL_BASE}/${key}`;
