@@ -258,10 +258,10 @@ export default function ContributorPage() {
 
   return (
     <div
-      className={`event-atmosphere event-themed relative mx-auto min-h-screen max-w-lg pb-[calc(8rem+env(safe-area-inset-bottom))]${event.coverImageUrl ? ' event-atmosphere--flyer-bg' : ''}`}
+      className={`event-atmosphere event-themed relative z-0 mx-auto min-h-screen max-w-lg pb-[calc(8rem+env(safe-area-inset-bottom))]${event.coverImageUrl ? ' event-atmosphere--flyer-bg' : ''}`}
       style={themeStyle}
     >
-      <EventGalleryBackground flyerUrl={event.coverImageUrl} cacheVersion={event.theme.version} />
+      <EventGalleryBackground flyerUrl={event.coverImageUrl} />
       {event.coverImageUrl && (
         <EventSplash
           slug={slug}

@@ -6,7 +6,7 @@ import {
   DEFAULT_EVENT_ACCENT,
   DEFAULT_EVENT_ACCENT_INK,
 } from '../lib/eventThemeTokens';
-import { cacheBustUrl } from '../lib/cacheBustUrl';
+import EventFlyerImage from './EventFlyerImage';
 
 type Props = {
   token: string;
@@ -94,7 +94,6 @@ export default function EventBrandingPanel({ token, event, allowCustomBranding, 
   const accentInk = resolvedAccentInk(event);
   const previewStyle = useMemo(() => buildEventThemeTokensFromAccent(accent), [accent]);
   const hasFlyer = Boolean(event.coverImageUrl);
-  const flyerPreviewUrl = cacheBustUrl(event.coverImageUrl, event.themeVersion ?? 0);
   const canPickThemeColor = !hasFlyer || allowCustomBranding;
 
   return (
@@ -111,11 +110,10 @@ export default function EventBrandingPanel({ token, event, allowCustomBranding, 
         <p className="text-sm text-[var(--muted)]">
           Shown once as a welcome screen. With a flyer, colors are extracted automatically and used as the gallery background.
         </p>
-        {flyerPreviewUrl ? (
+        {event.coverImageUrl ? (
           <div className="overflow-hidden rounded-xl border border-[var(--line)]">
-            <img
-              key={flyerPreviewUrl}
-              src={flyerPreviewUrl}
+            <EventFlyerImage
+              url={event.coverImageUrl}
               alt=""
               className="max-h-48 w-full object-contain bg-black/40"
             />

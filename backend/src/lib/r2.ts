@@ -40,6 +40,7 @@ export async function deleteFromR2(key: string): Promise<void> {
 
 export function publicUrlToKey(url: string): string | null {
   const base = `${env.R2_PUBLIC_URL_BASE}/`;
-  if (!url.startsWith(base)) return null;
-  return url.slice(base.length);
+  const path = url.split('?')[0]?.split('#')[0] ?? url;
+  if (!path.startsWith(base)) return null;
+  return path.slice(base.length);
 }

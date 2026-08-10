@@ -1,22 +1,18 @@
-import { cacheBustUrl } from '../lib/cacheBustUrl';
+import EventFlyerImage from './EventFlyerImage';
 
 type Props = {
   flyerUrl?: string | null;
-  cacheVersion?: number;
 };
 
-export default function EventGalleryBackground({ flyerUrl, cacheVersion = 0 }: Props) {
-  const src = cacheBustUrl(flyerUrl, cacheVersion);
-
-  if (src) {
+export default function EventGalleryBackground({ flyerUrl }: Props) {
+  if (flyerUrl) {
     return (
       <div
-        className="pointer-events-none absolute inset-0 -z-10 min-h-full overflow-hidden"
+        className="pointer-events-none absolute inset-0 z-0 min-h-full overflow-hidden"
         aria-hidden="true"
       >
-        <img
-          key={src}
-          src={src}
+        <EventFlyerImage
+          url={flyerUrl}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           draggable={false}
@@ -29,7 +25,7 @@ export default function EventGalleryBackground({ flyerUrl, cacheVersion = 0 }: P
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 -z-10 min-h-full"
+      className="pointer-events-none absolute inset-0 z-0 min-h-full"
       aria-hidden="true"
       style={{
         background: `

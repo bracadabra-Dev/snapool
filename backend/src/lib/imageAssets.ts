@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 import { uploadToR2, deleteFromR2 } from './r2';
 import { extractThemeFromImage } from './flyerThemeExtract';
@@ -52,8 +53,8 @@ export async function processAndUploadFlyer(
     .jpeg({ quality: 88 })
     .toBuffer();
 
-  const key = `events/${eventId}/flyer.jpg`;
-  const url = await uploadToR2(key, jpeg, 'image/jpeg', 'public, max-age=60, must-revalidate');
+  const key = `events/${eventId}/flyers/${randomUUID()}.jpg`;
+  const url = await uploadToR2(key, jpeg, 'image/jpeg', 'public, max-age=31536000, immutable');
 
   if (theme) {
     return {
