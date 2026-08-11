@@ -70,6 +70,36 @@ export default function AdminPlansPage() {
                   />
                 </label>
               ))}
+              <div className="block text-xs sm:col-span-2">
+                <span>Active events limit</span>
+                <label className="mt-2 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selected.maxActiveEvents == null}
+                    onChange={(e) =>
+                      setSelected({
+                        ...selected,
+                        maxActiveEvents: e.target.checked ? null : 1,
+                      })
+                    }
+                  />
+                  Unlimited events
+                </label>
+                {selected.maxActiveEvents != null && (
+                  <input
+                    type="number"
+                    min={1}
+                    className="field mt-2 w-full"
+                    value={selected.maxActiveEvents}
+                    onChange={(e) =>
+                      setSelected({
+                        ...selected,
+                        maxActiveEvents: Math.max(1, Number(e.target.value) || 1),
+                      })
+                    }
+                  />
+                )}
+              </div>
             </div>
             <div className="mt-3 space-y-2 text-sm">
               {[
@@ -105,7 +135,7 @@ export default function AdminPlansPage() {
       {pendingSave && (
         <ConfirmModal
           title={`Save changes to ${pendingSave.name}?`}
-          message={`Price: ${pendingSave.priceAmount} XAF · Video: ${pendingSave.allowVideo ? `${pendingSave.maxVideosPerEvent}/event` : 'off'}`}
+          message={`Price: ${pendingSave.priceAmount} XAF · Events: ${pendingSave.maxActiveEvents == null ? 'unlimited' : pendingSave.maxActiveEvents} · Video: ${pendingSave.allowVideo ? `${pendingSave.maxVideosPerEvent}/event` : 'off'}`}
           onCancel={() => setPendingSave(null)}
           onConfirm={() => {
             const plan = pendingSave;

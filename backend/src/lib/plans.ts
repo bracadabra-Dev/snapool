@@ -1,7 +1,12 @@
 import type { Event, User } from '@prisma/client';
 import { Response } from 'express';
 import { prisma } from './prisma';
-import { getEffectiveLimits, getPlanDefinition, getPlatformSettings } from './platformConfig';
+import {
+  getEffectiveLimits,
+  getPlanDefinition,
+  getPlatformSettings,
+  resolveAccountPlanId,
+} from './platformConfig';
 
 export class PlanError extends Error {
   status: number;
@@ -27,22 +32,47 @@ export async function getOwnerForEvent(eventId: string) {
   return event;
 }
 
+export type AccountEventLimits = {
+  planId: string;
+  planName: string;
+  maxActiveEvents: number | null;
+  activeCount: number;
+  canCreate: boolean;
+};
+
+export async function getAccountEventLimits(userId: string): Promise<AccountEventLimits> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new PlanError('User not found', 404, 'USER_NOT_FOUND');
+
+  const planId = resolveAccountPlanId(user);
+  const plan = await getPlanDefinition(planId);
+  const activeCount = await prisma.event.count({ where: { ownerId: userId } });
+  const canCreate = plan.maxActiveEvents == null || activeCount < plan.maxActiveEvents;
+
+  return {
+    planId,
+    planName: plan.name,
+    maxActiveEvents: plan.maxActiveEvents,
+    activeCount,
+    canCreate,
+  };
+}
+
 export async function assertCanCreateEvent(userId: string): Promise<void> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new PlanError('User not found', 404, 'USER_NOT_FOUND');
   if (user.suspended) throw new PlanError('Account suspended', 403, 'ACCOUNT_SUSPENDED');
 
-  const plan = await getPlanDefinition(user.plan);
-  if (plan.maxActiveEvents == null) return;
+  const limits = await getAccountEventLimits(userId);
+  if (limits.canCreate) return;
 
-  const activeCount = await prisma.event.count({ where: { ownerId: userId } });
-  if (activeCount >= plan.maxActiveEvents) {
-    throw new PlanError(
-      `Free plan allows ${plan.maxActiveEvents} active event. Upgrade to create more.`,
-      403,
-      'PLAN_LIMIT_EVENTS'
-    );
-  }
+  const max = limits.maxActiveEvents!;
+  const noun = max === 1 ? 'event' : 'events';
+  throw new PlanError(
+    `${limits.planName} allows ${max} active ${noun}. Upgrade to create more.`,
+    403,
+    'PLAN_LIMIT_EVENTS'
+  );
 }
 
 export async function assertEventUpdateAllowed(

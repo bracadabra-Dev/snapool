@@ -66,6 +66,13 @@ export default function PricingPage() {
               {plan.priceAmount === 0 ? 'Free' : `${plan.priceAmount.toLocaleString()} XAF`}
             </p>
             <ul className="mt-4 flex-1 space-y-1 text-sm text-[var(--muted)]">
+              <li>
+                {plan.features.maxActiveEvents == null
+                  ? 'Unlimited events'
+                  : plan.features.maxActiveEvents === 1
+                    ? '1 active event'
+                    : `${String(plan.features.maxActiveEvents)} active events`}
+              </li>
               <li>{String(plan.features.maxPhotosPerContributor)} photos / guest</li>
               <li>{String(plan.features.maxRetentionDays)} day retention</li>
               {plan.features.allowVideo ? (

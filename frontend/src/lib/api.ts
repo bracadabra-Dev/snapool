@@ -86,7 +86,7 @@ export const api = {
   me: (token: string) => request<{ user: User }>('/api/auth/me', {}, token),
 
   listEvents: (token: string) =>
-    request<{ events: EventSummary[] }>('/api/events', {}, token),
+    request<{ events: EventSummary[]; limits: AccountEventLimits }>('/api/events', {}, token),
 
   createEvent: (token: string, body: { name: string; thankYouMessage?: string }) =>
     request<{ event: EventDetail }>('/api/events', {
@@ -294,6 +294,14 @@ export type Photo = {
   uploadedAt: string;
   contributorName?: string | null;
   status?: string;
+};
+
+export type AccountEventLimits = {
+  planId: string;
+  planName: string;
+  maxActiveEvents: number | null;
+  activeCount: number;
+  canCreate: boolean;
 };
 
 export type EventSummary = {

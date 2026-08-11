@@ -11,11 +11,12 @@ import { env } from '../config/env';
 import { emitPhotoCreated, emitPhotoDeleted } from '../realtime/io';
 import {
   assertCanCreateEvent,
+  getAccountEventLimits,
   assertEventUpdateAllowed,
   PlanError,
   sendPlanError,
 } from '../lib/plans';
-import { getPlatformSettings, getPlanDefinition } from '../lib/platformConfig';
+import { getPlatformSettings, getPlanDefinition, resolveAccountPlanId } from '../lib/platformConfig';
 import { deleteCloudinaryVideo } from '../features/video/cloudinary';
 import {
   processAndUploadFlyer,
@@ -83,6 +84,7 @@ export async function listEvents(req: AuthedRequest, res: Response, next: NextFu
         _count: { select: { photos: true, contributors: true } },
       },
     });
+    const limits = await getAccountEventLimits(req.user!.userId);
     res.json({
       events: events.map((e) => ({
         ...e,
@@ -90,6 +92,7 @@ export async function listEvents(req: AuthedRequest, res: Response, next: NextFu
         photoCount: e._count.photos,
         contributorCount: e._count.contributors,
       })),
+      limits,
     });
   } catch (err) {
     next(err);
@@ -105,7 +108,7 @@ export async function createEvent(req: AuthedRequest, res: Response, next: NextF
       res.status(404).json({ error: 'User not found' });
       return;
     }
-    const plan = await getPlanDefinition(owner.plan);
+    const plan = await getPlanDefinition(resolveAccountPlanId(owner));
     const platform = await getPlatformSettings();
     const slug = makeUniqueSlug(body.name);
     const id = randomUUID();

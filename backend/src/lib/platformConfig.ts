@@ -139,6 +139,15 @@ async function getEventGrantOverrides(eventId: string): Promise<GrantOverrides> 
   return merged;
 }
 
+/** Account-level plan for limits that are not tied to a single event (e.g. how many events you can create). */
+export function resolveAccountPlanId(user: Pick<User, 'plan' | 'planExpiresAt'>): string {
+  if (isSubscriptionActive(user) && (user.plan === 'pro' || user.plan === 'studio')) {
+    return user.plan;
+  }
+  if (user.plan === 'event_pass') return 'event_pass';
+  return 'free';
+}
+
 function resolvePlanForUser(user: Pick<User, 'plan' | 'planExpiresAt'>, event: Pick<Event, 'paidFeaturesUnlocked'>): string {
   if (user.plan === 'event_pass' && event.paidFeaturesUnlocked) return 'event_pass';
   if (isSubscriptionActive(user) && (user.plan === 'pro' || user.plan === 'studio')) {

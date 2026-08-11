@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, EventSummary } from '../lib/api';
+import { api, AccountEventLimits, EventSummary } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import BrandLogo from '../components/BrandLogo';
 
@@ -8,6 +8,7 @@ export default function Dashboard() {
   const { token, user, logout } = useAuth();
   const navigate = useNavigate();
   const [events, setEvents] = useState<EventSummary[]>([]);
+  const [limits, setLimits] = useState<AccountEventLimits | null>(null);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -19,6 +20,7 @@ export default function Dashboard() {
     try {
       const res = await api.listEvents(token);
       setEvents(res.events);
+      setLimits(res.limits);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load events');
     } finally {
@@ -32,7 +34,7 @@ export default function Dashboard() {
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
-    if (!token || !name.trim()) return;
+    if (!token || !name.trim() || limits?.canCreate === false) return;
     setBusy(true);
     setError(null);
     try {
@@ -54,6 +56,9 @@ export default function Dashboard() {
           <p className="mt-1 text-sm text-[var(--muted)]">
             {user?.email}
             {user?.plan ? ` · ${user.plan}` : ''}
+            {limits?.maxActiveEvents != null && (
+              <> · {limits.activeCount} / {limits.maxActiveEvents} events</>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -78,18 +83,30 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <form onSubmit={onCreate} className="surface mb-6 flex flex-col gap-2 p-3 sm:flex-row sm:items-center">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="New event name"
-          required
-          className="field flex-1 !border-transparent !bg-[var(--ink)]"
-        />
-        <button type="submit" disabled={busy} className="btn-primary px-5 py-3 text-sm">
-          {busy ? 'Creating…' : 'Create'}
-        </button>
-      </form>
+      {limits?.canCreate === false ? (
+        <div className="surface mb-6 p-4 text-sm">
+          <p className="text-[var(--muted)]">
+            {limits.planName} allows {limits.maxActiveEvents} active{' '}
+            {limits.maxActiveEvents === 1 ? 'event' : 'events'}. Upgrade to create more.
+          </p>
+          <Link to="/pricing" className="btn-primary mt-3 inline-block px-4 py-2 text-sm">
+            View plans
+          </Link>
+        </div>
+      ) : (
+        <form onSubmit={onCreate} className="surface mb-6 flex flex-col gap-2 p-3 sm:flex-row sm:items-center">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="New event name"
+            required
+            className="field flex-1 !border-transparent !bg-[var(--ink)]"
+          />
+          <button type="submit" disabled={busy} className="btn-primary px-5 py-3 text-sm">
+            {busy ? 'Creating…' : 'Create'}
+          </button>
+        </form>
+      )}
 
       {error && <p className="mb-4 text-sm text-[var(--danger)]">{error}</p>}
 
