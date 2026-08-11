@@ -1,3 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="320" height="64" viewBox="0 0 320 64">
-  <text x="0" y="46" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700" fill="#ffffff" opacity="0.92">pixdump.net</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 56" fill="none">
+  <rect x="0" y="8" width="28" height="36" rx="5" transform="rotate(-12 14 26)" fill="#ffffff" opacity="0.18"/>
+  <rect x="6" y="4" width="28" height="36" rx="5" transform="rotate(6 20 22)" fill="#ffffff" opacity="0.28"/>
+  <rect x="12" y="10" width="34" height="44" rx="6" fill="#ffffff" opacity="0.12" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.55"/>
+  <circle cx="29" cy="30" r="6" stroke="#ffffff" stroke-width="1.4" stroke-opacity="0.85"/>
+  <circle cx="29" cy="30" r="2.4" fill="#ffffff" fill-opacity="0.9"/>
+  <circle cx="41" cy="18" r="3" fill="#ffffff" fill-opacity="0.9"/>
+  <text x="58" y="38" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#ffffff" fill-opacity="0.92">pixdump.net</text>
 </svg>

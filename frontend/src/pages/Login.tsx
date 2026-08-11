@@ -2,7 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { PLATFORM_NAME_HEADER } from '../lib/brand';
+import BrandLogo from '../components/BrandLogo';
 
 export default function Login() {
   const { setSession } = useAuth();
@@ -29,9 +29,7 @@ export default function Login() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
-      <Link to="/" className="font-display mb-8 text-sm font-bold tracking-[0.2em] text-[var(--accent)]">
-        {PLATFORM_NAME_HEADER}
-      </Link>
+      <BrandLogo variant="full" size="md" className="mb-8" href="/" />
       <h1 className="font-display text-4xl font-extrabold tracking-tight">Log in</h1>
       <p className="mt-2 text-sm text-[var(--muted)]">Pick up where your events left off.</p>
       <form onSubmit={onSubmit} className="mt-8 space-y-3">

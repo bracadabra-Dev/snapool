@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { api, PlanPublic } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import BrandLogo from '../components/BrandLogo';
 
 export default function PricingPage() {
   const { token, user } = useAuth();
@@ -43,6 +44,7 @@ export default function PricingPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-12">
+      <BrandLogo variant="full" size="sm" className="mb-6" href="/" />
       <p className="font-display text-xs font-bold tracking-[0.22em] text-[var(--accent)]">PRICING</p>
       <h1 className="font-display mt-2 text-4xl font-extrabold tracking-tight">Choose your plan</h1>
       <p className="mt-2 max-w-xl text-sm text-[var(--muted)]">

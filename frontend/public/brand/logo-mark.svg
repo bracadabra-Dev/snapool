@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" role="img" aria-label="PixDump">
+  <title>PixDump</title>
+  <rect x="7" y="11" width="17" height="22" rx="3.5" transform="rotate(-14 15.5 22)" fill="#2e2e38"/>
+  <rect x="13" y="8" width="17" height="22" rx="3.5" transform="rotate(7 21.5 19)" fill="#18181f"/>
+  <rect x="17" y="12" width="22" height="28" rx="4.5" fill="#101014" stroke="#d6ff3c" stroke-width="1.75"/>
+  <circle cx="28" cy="25" r="5.25" stroke="#d6ff3c" stroke-width="1.5" opacity="0.95"/>
+  <circle cx="28" cy="25" r="2.1" fill="#d6ff3c"/>
+  <circle cx="36.5" cy="16.5" r="2.6" fill="#d6ff3c"/>
+</svg>
