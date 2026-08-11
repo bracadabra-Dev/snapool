@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import type { EventWatermark } from '../lib/api';
 import {
   defaultPlatformWatermarkUrl,
+  platformWatermarkConfig,
   preloadWatermark,
   type WatermarkConfig,
   watermarkFromEvent,
@@ -13,7 +14,7 @@ export function useEventWatermark(
 ): WatermarkConfig {
   const config = useMemo(() => {
     if (!watermark) {
-      return { imageUrl: defaultPlatformWatermarkUrl(), revision: 0 };
+      return platformWatermarkConfig();
     }
     return watermarkFromEvent(watermark, brandingRevision);
   }, [watermark, brandingRevision]);
@@ -24,3 +25,5 @@ export function useEventWatermark(
 
   return config;
 }
+
+export { defaultPlatformWatermarkUrl, type WatermarkConfig };

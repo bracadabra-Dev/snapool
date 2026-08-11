@@ -7,6 +7,7 @@ import {
   DEFAULT_EVENT_ACCENT_INK,
 } from '../lib/eventThemeTokens';
 import EventFlyerImage from './EventFlyerImage';
+import { BRAND_ASSETS, PLATFORM_NAME } from '../lib/brand';
 
 type Props = {
   token: string;
@@ -227,8 +228,27 @@ export default function EventBrandingPanel({ token, event, allowCustomBranding, 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)]/60 p-3 text-sm">
             <p className="font-semibold">Upgrade for custom logo, watermark, and accent override over a flyer</p>
             <p className="mt-1 text-[var(--muted)]">
-              Free events use PixDump colors and the pixdump.net watermark on all photos. Theme color picker is available when no flyer is set.
+              Free events use {PLATFORM_NAME} colors and the pixdump.net watermark on every uploaded photo. Theme color
+              picker is available when no flyer is set.
             </p>
+            <div className="relative mt-4 overflow-hidden rounded-lg border border-[var(--line)] bg-[#1a1a22]">
+              <div
+                className="aspect-[16/10] w-full bg-cover bg-center"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(135deg, #2e2e38 0%, #121217 45%, #0a0a0f 100%)',
+                }}
+              />
+              <img
+                src={BRAND_ASSETS.watermark}
+                alt=""
+                className="pointer-events-none absolute bottom-3 right-3 h-auto w-[28%] max-w-[140px] opacity-[0.62]"
+                style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.45))' }}
+              />
+              <p className="absolute left-3 top-3 text-[10px] font-semibold uppercase tracking-wide text-white/45">
+                Watermark preview
+              </p>
+            </div>
             <Link to="/pricing" className="btn-primary mt-3 inline-block px-3 py-2 text-xs">
               View plans
             </Link>

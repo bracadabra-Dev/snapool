@@ -2,7 +2,25 @@ import {
   applyWatermarkToCanvas,
   preloadWatermark,
   type WatermarkConfig,
+  type WatermarkDrawOptions,
 } from './watermark';
+
+function drawOptionsFor(config: WatermarkConfig, isThumb: boolean): WatermarkDrawOptions {
+  if (isThumb) {
+    return {
+      opacity: config.thumbOpacity ?? config.opacity,
+      widthRatio: config.thumbWidthRatio ?? config.widthRatio,
+      minWidth: 40,
+      maxWidthRatio: 0.16,
+    };
+  }
+  return {
+    opacity: config.opacity,
+    widthRatio: config.widthRatio,
+    minWidth: 72,
+    maxWidthRatio: 0.14,
+  };
+}
 
 export async function compressImage(
   file: File,
@@ -23,7 +41,8 @@ export async function compressImage(
   if (watermark) {
     try {
       const wm = await preloadWatermark(watermark);
-      applyWatermarkToCanvas(canvas, wm, watermark.opacity ?? 0.72);
+      const isThumb = maxDimension <= 480;
+      applyWatermarkToCanvas(canvas, wm, drawOptionsFor(watermark, isThumb));
     } catch {
       // Upload without watermark if asset fails to load (e.g. CORS)
     }

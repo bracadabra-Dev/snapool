@@ -74,7 +74,7 @@ The Express server serves `frontend/dist` and SPA-falls back for non-`/api` rout
 
 ### R2 CORS (required for custom watermarks)
 
-If event owners upload custom watermark PNGs to R2, configure the bucket CORS policy to allow `GET` from your app origin so the browser can composite watermarks on canvas before photo upload. Example allowed origin: your `APP_PUBLIC_URL`. Platform default watermark is served from the app at `/watermark.svg` and does not require R2 CORS.
+If event owners upload custom watermark PNGs to R2, configure the bucket CORS policy to allow `GET` from your app origin so the browser can composite watermarks on canvas before photo upload. Example allowed origin: your `APP_PUBLIC_URL`. The default platform watermark is served from the app at `/brand/png/watermark/watermark-560w.png` and does not require R2 CORS.
 
 ## Phase 1 flows
 

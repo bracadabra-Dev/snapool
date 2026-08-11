@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { PLATFORM_NAME } from '../lib/brand';
+import { PLATFORM_NAME, BRAND_ASSETS } from '../lib/brand';
 
 export type BrandLogoVariant = 'mark' | 'full' | 'wordmark' | 'stacked';
 export type BrandLogoTone = 'light' | 'dark' | 'accent';
@@ -106,7 +106,7 @@ export default function BrandLogo({
 export function BrandLogoMark({ size = 34, className = '' }: { size?: number; className?: string }) {
   return (
     <img
-      src="/brand/logo-mark.svg"
+      src={BRAND_ASSETS.mark}
       alt=""
       width={size}
       height={size}

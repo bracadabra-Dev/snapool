@@ -6,10 +6,11 @@ import GalleryGrid from '../components/GalleryGrid';
 import Lightbox from '../components/Lightbox';
 import ProShotUpload from '../components/ProShotUpload';
 import EventBrandingPanel from '../components/EventBrandingPanel';
+import BrandLogo from '../components/BrandLogo';
 import { useEventLiveRoom } from '../hooks/useEventLiveRoom';
 import { useEventWatermark } from '../hooks/useEventWatermark';
 import { useVideoCapabilities } from '../features/video/useVideoCapabilities';
-import { defaultPlatformWatermarkUrl } from '../lib/watermark';
+import { BRAND_ASSETS } from '../lib/brand';
 import { upsertPhotos } from '../lib/realtime';
 
 type Tab = 'all' | 'pro' | 'contributor';
@@ -119,7 +120,7 @@ export default function EventEdit() {
   const proWatermark = useEventWatermark(
     allowCustomBranding && event?.watermarkImageUrl
       ? { mode: 'custom', imageUrl: event.watermarkImageUrl }
-      : { mode: 'platform', imageUrl: defaultPlatformWatermarkUrl() },
+      : { mode: 'platform', imageUrl: BRAND_ASSETS.watermark },
     brandingRevision
   );
 
@@ -159,10 +160,13 @@ export default function EventEdit() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-8">
-      <Link to="/dashboard" className="text-sm font-semibold text-[var(--muted)] hover:text-[var(--accent)]">
-        ← Events
-      </Link>
-      <h1 className="font-display mt-3 text-4xl font-extrabold tracking-tight">{event.name}</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <BrandLogo variant="full" size="sm" href="/dashboard" />
+        <Link to="/dashboard" className="text-sm font-semibold text-[var(--muted)] hover:text-[var(--accent)]">
+          ← Events
+        </Link>
+      </div>
+      <h1 className="font-display text-4xl font-extrabold tracking-tight">{event.name}</h1>
 
       <div className="surface mt-6 grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-center">
         <div className="min-w-0">

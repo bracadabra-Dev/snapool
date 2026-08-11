@@ -19,20 +19,6 @@ export const BRAND_COLORS = {
   muted: '#9b9ba8',
 } as const;
 
-/** Static logo asset paths (served from /public). */
-export const BRAND_ASSETS = {
-  mark: '/brand/logo-mark.svg',
-  markMono: '/brand/logo-mark-mono.svg',
-  fullLight: '/brand/logo-full-light.svg',
-  fullDark: '/brand/logo-full-dark.svg',
-  stackedLight: '/brand/logo-stacked-light.svg',
-  favicon: '/favicon.svg',
-  appleTouchIcon: '/apple-touch-icon.svg',
-  watermark: '/watermark.svg',
-  ogImage: '/brand/og-image.svg',
-  manifest: '/site.webmanifest',
-} as const;
-
 /** PNG exports for marketing, print, and social (regenerate: npm run export-brand-png -w backend). */
 export const BRAND_PNG = {
   mark1024: '/brand/png/logo-mark/logo-mark-1024.png',
@@ -44,6 +30,38 @@ export const BRAND_PNG = {
   stacked512: '/brand/png/logo-stacked-light/logo-stacked-light-512w.png',
   og1200x630: '/brand/png/og-image/og-image-1200x630.png',
   appleTouch180: '/brand/png/apple-touch-icon/apple-touch-icon-180.png',
+  favicon32: '/brand/png/favicon/favicon-32.png',
+  favicon128: '/brand/png/favicon/favicon-128.png',
   watermark560: '/brand/png/watermark/watermark-560w.png',
   baseDir: '/brand/png',
+} as const;
+
+/** Static logo asset paths (served from /public). */
+export const BRAND_ASSETS = {
+  mark: '/brand/logo-mark.svg',
+  markMono: '/brand/logo-mark-mono.svg',
+  fullLight: '/brand/logo-full-light.svg',
+  fullDark: '/brand/logo-full-dark.svg',
+  stackedLight: '/brand/logo-stacked-light.svg',
+  favicon: '/favicon.svg',
+  faviconPng: BRAND_PNG.favicon32,
+  appleTouchIcon: BRAND_PNG.appleTouch180,
+  appleTouchSvg: '/apple-touch-icon.svg',
+  watermark: BRAND_PNG.watermark560,
+  ogImage: BRAND_PNG.og1200x630,
+  manifest: '/site.webmanifest',
+} as const;
+
+/** Default platform watermark baked onto free-tier photo uploads. */
+export const PLATFORM_WATERMARK = {
+  imageUrl: BRAND_PNG.watermark560,
+  /** Full-size uploads (~2048px) */
+  opacity: 0.62,
+  widthRatio: 0.105,
+  minWidth: 72,
+  maxWidthRatio: 0.14,
+  /** Thumbnails (~400px) — slightly smaller relative footprint */
+  thumbOpacity: 0.58,
+  thumbWidthRatio: 0.13,
+  thumbMinWidth: 40,
 } as const;

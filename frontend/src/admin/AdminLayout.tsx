@@ -25,11 +25,8 @@ export default function AdminLayout() {
     <div className="min-h-screen bg-[#0a0b0f] text-[#e8eaef]">
       <div className="mx-auto flex max-w-7xl gap-6 px-4 py-6">
         <aside className="hidden w-52 shrink-0 md:block">
-          <p className="font-display text-xs font-bold tracking-[0.22em] text-[var(--accent)]">ADMIN</p>
-          <div className="mt-2 flex items-center gap-2">
-            <BrandLogo variant="mark" size="sm" />
-            <h1 className="font-display text-2xl font-extrabold">Ops</h1>
-          </div>
+          <BrandLogo variant="full" size="sm" href="/" className="mb-3" />
+          <p className="font-display text-xs font-bold tracking-[0.22em] text-[var(--accent)]">ADMIN CONSOLE</p>
           <nav className="mt-6 space-y-1">
             {links.map(([path, label]) => (
               <NavLink

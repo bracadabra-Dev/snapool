@@ -1,6 +1,7 @@
 import type { Event, User } from '@prisma/client';
 import { env } from '../config/env';
 import { getEffectiveLimits } from './platformConfig';
+import { PLATFORM_WATERMARK_PATH } from './brandAssets';
 
 export const DEFAULT_THEME_ACCENT = '#d6ff3c';
 export const DEFAULT_THEME_ACCENT_INK = '#0a0a0a';
@@ -70,7 +71,7 @@ export function resolveTheme(event: Pick<Event, 'themeAccent' | 'themeAccentInk'
 
 export function platformWatermarkUrl(platformWatermarkUrl?: string | null): string {
   if (platformWatermarkUrl) return platformWatermarkUrl;
-  return `${env.APP_PUBLIC_URL}/watermark.svg`;
+  return `${env.APP_PUBLIC_URL}${PLATFORM_WATERMARK_PATH}`;
 }
 
 export async function resolveWatermark(
