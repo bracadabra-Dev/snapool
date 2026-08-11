@@ -56,12 +56,12 @@ export const BRAND_ASSETS = {
 export const PLATFORM_WATERMARK = {
   imageUrl: BRAND_PNG.watermark560,
   /** Full-size uploads (~2048px) */
-  opacity: 0.62,
-  widthRatio: 0.105,
-  minWidth: 72,
-  maxWidthRatio: 0.14,
-  /** Thumbnails (~400px) — slightly smaller relative footprint */
-  thumbOpacity: 0.58,
-  thumbWidthRatio: 0.13,
-  thumbMinWidth: 40,
+  opacity: 0.88,
+  widthRatio: 0.18,
+  minWidth: 120,
+  maxWidthRatio: 0.24,
+  /** Thumbnails (~400px) */
+  thumbOpacity: 0.84,
+  thumbWidthRatio: 0.2,
+  thumbMinWidth: 56,
 } as const;

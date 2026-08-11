@@ -63,8 +63,8 @@ export function applyWatermarkToCanvas(
 
   ctx.save();
   ctx.globalAlpha = opacity;
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.42)';
-  ctx.shadowBlur = Math.max(2, targetWidth * 0.07);
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+  ctx.shadowBlur = Math.max(3, targetWidth * 0.08);
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 1;
   ctx.drawImage(img, x, y, targetWidth, targetHeight);
@@ -88,10 +88,10 @@ export function watermarkFromEvent(watermark: EventWatermark, brandingRevision: 
   }
   return {
     imageUrl: watermark.imageUrl,
-    opacity: 0.64,
-    thumbOpacity: 0.58,
-    widthRatio: 0.1,
-    thumbWidthRatio: 0.12,
+    opacity: 0.86,
+    thumbOpacity: 0.82,
+    widthRatio: 0.16,
+    thumbWidthRatio: 0.18,
     revision: brandingRevision,
   };
 }

@@ -242,7 +242,7 @@ export default function EventBrandingPanel({ token, event, allowCustomBranding, 
               <img
                 src={BRAND_ASSETS.watermark}
                 alt=""
-                className="pointer-events-none absolute bottom-3 right-3 h-auto w-[28%] max-w-[140px] opacity-[0.62]"
+                className="pointer-events-none absolute bottom-3 right-3 h-auto w-[38%] max-w-[200px] opacity-[0.88]"
                 style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.45))' }}
               />
               <p className="absolute left-3 top-3 text-[10px] font-semibold uppercase tracking-wide text-white/45">

@@ -4,21 +4,22 @@ import {
   type WatermarkConfig,
   type WatermarkDrawOptions,
 } from './watermark';
+import { PLATFORM_WATERMARK } from './brand';
 
 function drawOptionsFor(config: WatermarkConfig, isThumb: boolean): WatermarkDrawOptions {
   if (isThumb) {
     return {
       opacity: config.thumbOpacity ?? config.opacity,
       widthRatio: config.thumbWidthRatio ?? config.widthRatio,
-      minWidth: 40,
-      maxWidthRatio: 0.16,
+      minWidth: PLATFORM_WATERMARK.thumbMinWidth,
+      maxWidthRatio: PLATFORM_WATERMARK.maxWidthRatio,
     };
   }
   return {
     opacity: config.opacity,
     widthRatio: config.widthRatio,
-    minWidth: 72,
-    maxWidthRatio: 0.14,
+    minWidth: PLATFORM_WATERMARK.minWidth,
+    maxWidthRatio: PLATFORM_WATERMARK.maxWidthRatio,
   };
 }
 
